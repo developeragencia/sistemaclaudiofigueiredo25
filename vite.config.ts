@@ -28,6 +28,9 @@ export default defineConfig(({ command, mode }) => {
           },
         },
       },
+      commonjsOptions: {
+        esmExternals: true,
+      },
     },
     server: {
       port: 3000,
@@ -39,6 +42,10 @@ export default defineConfig(({ command, mode }) => {
     },
     define: {
       'process.env': env,
+    },
+    optimizeDeps: {
+      include: ['react', 'react-dom', 'react-router-dom'],
+      exclude: [],
     },
     test: {
       globals: true,
