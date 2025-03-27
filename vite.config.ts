@@ -4,6 +4,7 @@ import { resolve } from 'path'
 
 export default defineConfig({
   plugins: [react()],
+  base: '/',
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
@@ -13,31 +14,16 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: true,
     rollupOptions: {
-      external: [
-        'react-day-picker',
-        '@radix-ui/react-popover',
-        '@radix-ui/react-dialog',
-        '@radix-ui/react-select',
-        '@radix-ui/react-slot',
-        '@radix-ui/react-toast',
-        '@radix-ui/react-label',
-        '@radix-ui/react-dropdown-menu',
-        '@radix-ui/react-alert-dialog'
-      ],
+      input: {
+        main: resolve(__dirname, 'index.html'),
+      },
       output: {
-        globals: {
-          'react-day-picker': 'ReactDayPicker',
-          '@radix-ui/react-popover': 'RadixPopover',
-          '@radix-ui/react-dialog': 'RadixDialog',
-          '@radix-ui/react-select': 'RadixSelect',
-          '@radix-ui/react-slot': 'RadixSlot',
-          '@radix-ui/react-toast': 'RadixToast',
-          '@radix-ui/react-label': 'RadixLabel',
-          '@radix-ui/react-dropdown-menu': 'RadixDropdownMenu',
-          '@radix-ui/react-alert-dialog': 'RadixAlertDialog'
-        }
-      }
-    }
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['@radix-ui/react-alert-dialog', '@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-label', '@radix-ui/react-select', '@radix-ui/react-slot', '@radix-ui/react-toast'],
+        },
+      },
+    },
   },
   server: {
     port: 3000,
