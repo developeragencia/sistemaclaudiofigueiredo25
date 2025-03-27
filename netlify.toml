@@ -1,13 +1,12 @@
 # Configuração para deploy na Netlify (compatível com muitos provedores como Hosting)
 [build]
-  command = "npm run build"
+  command = "CI=false npm install && npm run build"
   publish = "dist"
-  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF ./src"
 
 [build.environment]
   NODE_VERSION = "20"
   NPM_VERSION = "10"
-  CI = "true"
+  CI = "false"
   NODE_ENV = "production"
 
 # Configuração para SPA (Single Page Application)
