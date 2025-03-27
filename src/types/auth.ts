@@ -32,13 +32,21 @@ export interface UpdatePasswordData {
 }
 
 export interface AuthContextType {
-  user: User | null;
+  isAuthenticated: boolean;
   isLoading: boolean;
-  error: string | null;
-  login: (credentials: LoginCredentials) => Promise<void>;
+  user: User | null;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  resetPassword: (data: ResetPasswordData) => Promise<void>;
-  updatePassword: (data: UpdatePasswordData) => Promise<void>;
-  updateProfile: (data: Partial<User>) => Promise<void>;
-  updateAvatar: (file: File) => Promise<void>;
+}
+
+export interface Role {
+  name: string;
+  id: string;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  roles: Role[];
 } 

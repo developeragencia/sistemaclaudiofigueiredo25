@@ -1,26 +1,15 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
+import { AuthContextType, User } from '@/types/auth';
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-}
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-interface AuthContextType {
-  user: User | null;
-  signIn: (email: string, password: string) => Promise<void>;
-  signOut: () => void;
-  isLoading: boolean;
-}
-
-const AuthContext = createContext<AuthContextType | null>(null);
-
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,19 +21,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       api.get('/me')
         .then(response => {
           setUser(response.data);
+          setIsAuthenticated(true);
         })
         .catch(() => {
-          signOut();
+          logout();
         })
         .finally(() => {
           setIsLoading(false);
         });
     } else {
+      setIsAuthenticated(false);
+      setUser(null);
       setIsLoading(false);
     }
   }, []);
 
-  async function signIn(email: string, password: string) {
+  const login = async (email: string, password: string) => {
     try {
       const response = await api.post('/sessions', {
         email,
@@ -57,6 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
       setUser(userData);
+      setIsAuthenticated(true);
       navigate('/dashboard');
       toast.success('Login realizado com sucesso!');
     } catch (error) {
@@ -64,18 +57,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       toast.error('Email ou senha inválidos');
       throw error;
     }
-  }
+  };
 
-  function signOut() {
+  const logout = async () => {
     localStorage.removeItem('@secure-bridge:token');
     api.defaults.headers.common['Authorization'] = '';
     setUser(null);
+    setIsAuthenticated(false);
     navigate('/');
     toast.success('Logout realizado com sucesso!');
-  }
+  };
+
+  const value: AuthContextType = {
+    isAuthenticated,
+    isLoading,
+    user,
+    login,
+    logout
+  };
 
   return (
-    <AuthContext.Provider value={{ user, signIn, signOut, isLoading }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
