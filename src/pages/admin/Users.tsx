@@ -17,6 +17,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { User, UserFormData } from '@/types/users';
+import { useQueryClient } from 'react-query';
 
 const roleLabels = {
   MASTER_ADMIN: 'Master Admin',
@@ -50,13 +52,14 @@ const filterOptions: FilterOption[] = [
 ];
 
 export function Users() {
-  const [selectedUser, setSelectedUser] = useState<any>();
+  const [selectedUser, setSelectedUser] = useState<User | undefined>();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { users, isLoading, deleteUser } = useUsers();
   const { filters, handleSearchChange, handleFilterChange } = useFilters();
   const { page, pageSize, totalPages, goToPage, changePageSize } = usePagination({
     total: users.length,
   });
+  const queryClient = useQueryClient();
 
   // Filtra e pagina os usuários
   const filteredUsers = useMemo(() => {
@@ -91,23 +94,28 @@ export function Users() {
     goToPage(1);
   }, [filters, goToPage]);
 
-  const handleEdit = (user: typeof users[0]) => {
+  const handleEdit = (user: User) => {
     setSelectedUser(user);
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (user: typeof users[0]) => {
+  const handleDelete = async (user: User) => {
     if (window.confirm('Tem certeza que deseja excluir este usuário?')) {
       try {
         await deleteUser(user.id);
-      } catch (error) {
-        console.error('Erro ao excluir usuário:', error);
+        toast.success('Usuário excluído com sucesso');
+        queryClient.invalidateQueries(['users']);
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          console.error('Erro ao excluir usuário:', error.message);
+          toast.error('Erro ao excluir usuário');
+        }
       }
     }
   };
 
   // Colunas da tabela
-  const columns: Column<typeof users[0]>[] = [
+  const columns: Column<User>[] = [
     {
       header: 'Usuário',
       accessorKey: 'name',
@@ -121,7 +129,7 @@ export function Users() {
         return (
           <div className="flex items-center gap-2">
             <Avatar>
-              <AvatarImage src={row.avatar_url || undefined} />
+              <AvatarImage src={row.avatar_url} alt={row.name} />
               <AvatarFallback>{userInitials}</AvatarFallback>
             </Avatar>
             <span className="font-medium">{row.name}</span>

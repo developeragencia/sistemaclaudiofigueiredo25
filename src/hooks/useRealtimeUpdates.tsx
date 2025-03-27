@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -15,7 +14,13 @@ interface UseRealtimeUpdatesOptions {
   showToasts?: boolean;
 }
 
-export function useRealtimeUpdates({
+interface RealtimeUpdateCallbacks<T> {
+  onInsert?: (payload: T) => void;
+  onUpdate?: (payload: T) => void;
+  onDelete?: (payload: T) => void;
+}
+
+export function useRealtimeUpdates<T>({
   tableName,
   events = ['INSERT', 'UPDATE', 'DELETE'],
   onInsert,

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ActiveClientHeader from '@/components/ActiveClientHeader';
@@ -9,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import StatusBadge from '@/components/admin/tax-credits/components/StatusBadge';
+import { Declaration, DeclarationTableProps } from '@/types/declarations';
 
 // Mock data for declarations
 const MOCK_DECLARATIONS = [
@@ -61,15 +61,19 @@ const MOCK_DECLARATIONS = [
 
 const Declarations = () => {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState({
+    status: '',
+    submissionDate: null as string | null,
+    search: ''
+  });
   const [activeTab, setActiveTab] = useState('pending');
   
   // Filter declarations based on search query and active tab
   const filteredDeclarations = MOCK_DECLARATIONS.filter(declaration => {
     const matchesSearch = 
-      declaration.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      declaration.period.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      declaration.amount.toLowerCase().includes(searchQuery.toLowerCase());
+      declaration.type.toLowerCase().includes(filters.search.toLowerCase()) ||
+      declaration.period.toLowerCase().includes(filters.search.toLowerCase()) ||
+      declaration.amount.toLowerCase().includes(filters.search.toLowerCase());
     
     if (activeTab === 'all') return matchesSearch;
     if (activeTab === 'pending') return matchesSearch && declaration.status === 'pending';
@@ -172,8 +176,8 @@ const Declarations = () => {
                 <Input
                   placeholder="Buscar declaração..."
                   className="pl-9"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={filters.search}
+                  onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                 />
               </div>
               <Button variant="outline" size="icon">
@@ -247,7 +251,7 @@ const Declarations = () => {
 };
 
 // Separate component for the declarations table
-const DeclarationsTable = ({ declarations }: { declarations: any[] }) => {
+const DeclarationsTable = ({ declarations }: DeclarationTableProps) => {
   const navigate = useNavigate();
   
   const handleRowClick = (id: string) => {

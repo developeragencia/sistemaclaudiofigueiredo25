@@ -1,4 +1,3 @@
-
 // Define status types used across the application
 
 export type StatusType = 
@@ -15,21 +14,27 @@ export type StatusType =
 
 export interface Declaration {
   id: string;
-  title: string;
-  description?: string;
-  status: StatusType;
+  companyName: string;
+  cnpj: string;
+  submissionDate: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  type: string;
+  value: number;
+  details: Record<string, unknown>;
   createdAt: string;
-  updatedAt?: string;
-  clientId: string;
-  clientName: string;
-  documentNumber: string;
-  fiscalYear: string;
-  fiscalPeriod: string;
-  deadline?: string;
-  assignedTo?: string;
-  taxType: string;
-  amount?: number;
-  attachmentsCount: number;
+  updatedAt: string;
+}
+
+export interface DeclarationTableProps {
+  declarations: Declaration[];
+}
+
+export interface CompanyInfo {
+  companyName: string;
+  cnpj: string;
+  address?: string;
+  phone?: string;
+  email?: string;
 }
 
 // Add missing types needed for other components
