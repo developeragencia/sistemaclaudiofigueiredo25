@@ -1,0 +1,11 @@
+
+# Configuração para deploy na Netlify (compatível com muitos provedores como Hosting)
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Configuração para SPA (Single Page Application)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

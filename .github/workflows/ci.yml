@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: 🧪 Test & Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          
+      - name: 📥 Install dependencies
+        run: npm ci
+        
+      - name: 🔍 Lint
+        run: npm run lint
+        
+      - name: 🧪 Run tests
+        run: npm run test:coverage
+        
+      - name: 📊 Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 30
+          
+  build:
+    name: 🏗️ Build
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          
+      - name: 📥 Install dependencies
+        run: npm ci
+        
+      - name: 🏗️ Build
+        run: npm run build
+        env:
+          VITE_APP_BASE_URL: ${{ secrets.VITE_APP_BASE_URL }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          
+      - name: 📤 Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: dist/
+          retention-days: 7
+
+  deploy-preview:
+    name: 🚀 Deploy Preview
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment:
+      name: preview
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: 📥 Download build
+        uses: actions/download-artifact@v4
+        with:
+          name: build
+          path: dist
+
+      - name: 🚀 Deploy to preview
+        id: deploy
+        run: echo "Simulando deploy para ambiente de preview"
+
+  deploy-production:
+    name: 🚀 Deploy Production
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: 📥 Download build
+        uses: actions/download-artifact@v4
+        with:
+          name: build
+          path: dist
+
+      - name: 🚀 Deploy to production
+        id: deploy
+        run: echo "Simulando deploy para ambiente de produção" 

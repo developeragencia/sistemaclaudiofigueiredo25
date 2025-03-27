@@ -1,0 +1,246 @@
+
+/* Shimmer Effect */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    transparent 100%
+  );
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  to {
+    transform: translateX(200%);
+  }
+}
+
+/* Pulse Animation */
+.pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Pop Effect */
+.pop-on-hover {
+  transition: transform 0.2s ease;
+}
+
+.pop-on-hover:hover {
+  transform: scale(1.05);
+}
+
+/* Glow Effect */
+.glow-on-hover {
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+
+.glow-on-hover:hover {
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+  transform: translateY(-2px);
+}
+
+/* Button Press Effect */
+.press-effect {
+  transition: transform 0.1s ease;
+}
+
+.press-effect:active {
+  transform: scale(0.95);
+}
+
+/* Slide-in Animation */
+.slide-in {
+  animation: slideIn 0.3s ease-out forwards;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade Effect for Page Transitions */
+.fade-enter {
+  opacity: 0;
+}
+
+.fade-enter-active {
+  opacity: 1;
+  transition: opacity 300ms;
+}
+
+.fade-exit {
+  opacity: 1;
+}
+
+.fade-exit-active {
+  opacity: 0;
+  transition: opacity 300ms;
+}
+
+/* Card hover effects */
+.card-hover {
+  transition: all 0.3s ease;
+  transform-origin: center;
+}
+
+.card-hover:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+/* Floating animation */
+.floating {
+  animation: floating 3s ease-in-out infinite;
+}
+
+@keyframes floating {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+/* Gradient shift animation for cards */
+.gradient-shift {
+  background-size: 200% 200%;
+  animation: gradient-position 15s ease infinite;
+}
+
+@keyframes gradient-position {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Subtle scale effect */
+.scale-hover {
+  transition: transform 0.3s ease;
+}
+
+.scale-hover:hover {
+  transform: scale(1.02);
+}
+
+/* Glow pulse effect */
+.glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
+/* Arrow bounce animation */
+.arrow-bounce {
+  animation: arrow-bounce 2s infinite;
+}
+
+@keyframes arrow-bounce {
+  0%, 20%, 50%, 80%, 100% { transform: translateX(0); }
+  40% { transform: translateX(-5px); }
+  60% { transform: translateX(5px); }
+}
+
+/* Text underline animation */
+.animate-underline {
+  position: relative;
+}
+
+.animate-underline::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: -2px;
+  left: 0;
+  background-color: currentColor;
+  transition: width 0.3s ease;
+}
+
+.animate-underline:hover::after {
+  width: 100%;
+}
+
+/* Card background pulse */
+.bg-pulse {
+  animation: bg-pulse 3s ease-in-out infinite;
+}
+
+@keyframes bg-pulse {
+  0%, 100% { background-opacity: 0.7; }
+  50% { background-opacity: 0.9; }
+}
+
+/* 3D card tilt effect (with pointer events) */
+.tilt-card {
+  transition: transform 0.2s ease;
+  transform-style: preserve-3d;
+}
+
+/* Blur in effect for modals/popovers */
+.blur-in {
+  animation: blur-in 0.3s forwards;
+}
+
+@keyframes blur-in {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+/* Badge ping animation */
+.badge-ping {
+  position: relative;
+}
+
+.badge-ping::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #ef4444;
+  animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes ping {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}

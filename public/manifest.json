@@ -1,0 +1,62 @@
+{
+  "name": "Secure Bridge Connect",
+  "short_name": "SBC",
+  "description": "Plataforma segura para gerenciamento de transações financeiras",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Transações",
+      "short_name": "Transações",
+      "description": "Ver todas as transações",
+      "url": "/transactions",
+      "icons": [{ "src": "/icons/transactions.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Clientes",
+      "short_name": "Clientes",
+      "description": "Gerenciar clientes",
+      "url": "/clients",
+      "icons": [{ "src": "/icons/clients.png", "sizes": "192x192" }]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "screenshots": [
+    {
+      "src": "/screenshots/home.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "platform": "wide",
+      "label": "Página inicial do Secure Bridge Connect"
+    },
+    {
+      "src": "/screenshots/transactions.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "platform": "wide",
+      "label": "Lista de transações"
+    }
+  ]
+} 
