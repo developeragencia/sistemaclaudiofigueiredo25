@@ -2,8 +2,8 @@
 /// <reference types="vite/client" />
 
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import path from 'path'
+import react from '@vitejs/plugin-react-swc'
+import { resolve } from 'path'
 
 export default defineConfig({
   plugins: [react()],
@@ -17,15 +17,12 @@ export default defineConfig({
       exclude: [
         'node_modules/',
         'src/test/',
-        '**/*.d.ts',
-        '**/*.config.*',
-        '**/types/*',
       ],
     },
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': resolve(__dirname, './src'),
     },
   },
 }) 

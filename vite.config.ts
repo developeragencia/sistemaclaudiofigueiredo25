@@ -1,63 +1,46 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import path from "path";
-import { loadEnv } from "vite";
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { resolve } from 'path'
 
-// https://vitejs.dev/config/
-export default defineConfig(({ command, mode }: ConfigEnv): UserConfig => {
-  const env = loadEnv(mode, process.cwd(), "");
-  return {
-    plugins: [react()],
-    resolve: {
-      alias: {
-        "@": path.resolve(__dirname, "./src"),
-      },
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, './src'),
     },
-    server: {
-      port: 3000,
-      host: true,
-      strictPort: true,
-    },
-    preview: {
-      port: 3000,
-      host: true,
-      strictPort: true,
-    },
-    build: {
-      outDir: "dist",
-      sourcemap: false,
-      chunkSizeWarningLimit: 1600,
-      rollupOptions: {
-        output: {
-          manualChunks: {
-            vendor: ['react', 'react-dom', 'react-router-dom'],
-            ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-toast'],
-          },
-          assetFileNames: (assetInfo) => {
-            let extType = assetInfo.name.split('.').at(1);
-            if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(extType)) {
-              extType = 'img';
-            }
-            return `assets/${extType}/[name]-[hash][extname]`;
-          },
-          chunkFileNames: 'assets/js/[name]-[hash].js',
-          entryFileNames: 'assets/js/[name]-[hash].js'
-        },
-      },
-      target: 'esnext',
-      minify: 'terser',
-      terserOptions: {
-        compress: {
-          drop_console: true,
-          drop_debugger: true
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+    rollupOptions: {
+      external: [
+        'react-day-picker',
+        '@radix-ui/react-popover',
+        '@radix-ui/react-dialog',
+        '@radix-ui/react-select',
+        '@radix-ui/react-slot',
+        '@radix-ui/react-toast',
+        '@radix-ui/react-label',
+        '@radix-ui/react-dropdown-menu',
+        '@radix-ui/react-alert-dialog'
+      ],
+      output: {
+        globals: {
+          'react-day-picker': 'ReactDayPicker',
+          '@radix-ui/react-popover': 'RadixPopover',
+          '@radix-ui/react-dialog': 'RadixDialog',
+          '@radix-ui/react-select': 'RadixSelect',
+          '@radix-ui/react-slot': 'RadixSlot',
+          '@radix-ui/react-toast': 'RadixToast',
+          '@radix-ui/react-label': 'RadixLabel',
+          '@radix-ui/react-dropdown-menu': 'RadixDropdownMenu',
+          '@radix-ui/react-alert-dialog': 'RadixAlertDialog'
         }
       }
-    },
-    define: {
-      "process.env": env,
-    },
-    optimizeDeps: {
-      include: ['react', 'react-dom', 'react-router-dom']
     }
-  };
-});
+  },
+  server: {
+    port: 3000,
+    host: true,
+  },
+})

@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD
 
 on:
   push:
@@ -7,34 +7,6 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [18.x]
-
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v3
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-        
-    - name: Install dependencies
-      run: npm ci
-      
-    - name: Build
-      run: npm run build
-      
-    - name: Lint
-      run: npm run lint
-      
-    - name: Test
-      run: npm test
-
   test:
     name: 🧪 Test & Quality
     runs-on: ubuntu-latest
@@ -45,7 +17,7 @@ jobs:
       - name: 📦 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '18.x'
           cache: 'npm'
           
       - name: 📥 Install dependencies
@@ -55,7 +27,7 @@ jobs:
         run: npm run lint
         
       - name: 🧪 Run tests
-        run: npm run test:coverage
+        run: npm run test
         
       - name: 📊 Upload coverage report
         uses: actions/upload-artifact@v4
@@ -63,43 +35,53 @@ jobs:
           name: coverage-report
           path: coverage/
           retention-days: 30
-          
-  deploy-preview:
-    name: 🚀 Deploy Preview
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop'
-    environment:
-      name: preview
-      url: ${{ steps.deploy.outputs.url }}
 
+  build:
+    name: 🏗️ Build
+    needs: test
+    runs-on: ubuntu-latest
+    
     steps:
-      - name: 📥 Download build
-        uses: actions/download-artifact@v4
+      - uses: actions/checkout@v4
+      
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+          cache: 'npm'
+          
+      - name: 📥 Install dependencies
+        run: npm ci
+        
+      - name: 🏗️ Build
+        run: npm run build
+        
+      - name: 📤 Upload build artifacts
+        uses: actions/upload-artifact@v4
         with:
           name: build
-          path: dist
+          path: dist/
+          retention-days: 7
 
-      - name: 🚀 Deploy to preview
-        id: deploy
-        run: echo "Simulando deploy para ambiente de preview"
-
-  deploy-production:
-    name: 🚀 Deploy Production
+  deploy:
+    name: 🚀 Deploy
     needs: build
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    environment:
-      name: production
-      url: ${{ steps.deploy.outputs.url }}
-
+    
     steps:
+      - uses: actions/checkout@v4
+      
       - name: 📥 Download build
         uses: actions/download-artifact@v4
         with:
           name: build
           path: dist
-
-      - name: 🚀 Deploy to production
-        id: deploy
-        run: echo "Simulando deploy para ambiente de produção" 
+          
+      - name: 🚀 Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod' 

@@ -130,12 +130,12 @@ export function AdminDashboard() {
                     <div className="flex flex-wrap gap-1 mt-2">
                       {client.tags.map((tag, index) => (
                         <Badge key={index} variant="outline" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
+                        {tag}
+                      </Badge>
+                    ))}
                     </div>
                   )}
-                </div>
+                  </div>
                 <div className="p-4 bg-muted/50 border-t">
                   <Button variant="secondary" size="sm" className="w-full">
                     Ver Detalhes

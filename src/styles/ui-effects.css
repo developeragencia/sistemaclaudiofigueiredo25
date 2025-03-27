@@ -1,17 +1,11 @@
-
 /* Shimmer Effect */
 .shimmer {
-  position: relative;
-  overflow: hidden;
+  @apply relative overflow-hidden;
 }
 
 .shimmer::before {
+  @apply absolute top-0 left-[-100%] w-full h-full;
   content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
   background: linear-gradient(
     to right,
     transparent 0%,
@@ -43,30 +37,29 @@
 
 /* Pop Effect */
 .pop-on-hover {
-  transition: transform 0.2s ease;
+  @apply transition-transform duration-200 ease-in-out;
 }
 
 .pop-on-hover:hover {
-  transform: scale(1.05);
+  @apply scale-105;
 }
 
 /* Glow Effect */
 .glow-on-hover {
-  transition: box-shadow 0.3s ease, transform 0.2s ease;
+  @apply transition-all duration-300 ease-in-out;
 }
 
 .glow-on-hover:hover {
-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
-  transform: translateY(-2px);
+  @apply shadow-lg -translate-y-0.5;
 }
 
 /* Button Press Effect */
 .press-effect {
-  transition: transform 0.1s ease;
+  @apply transition-transform duration-100 ease-in-out;
 }
 
 .press-effect:active {
-  transform: scale(0.95);
+  @apply scale-95;
 }
 
 /* Slide-in Animation */
@@ -76,43 +69,37 @@
 
 @keyframes slideIn {
   from {
-    opacity: 0;
-    transform: translateY(20px);
+    @apply opacity-0 translate-y-5;
   }
   to {
-    opacity: 1;
-    transform: translateY(0);
+    @apply opacity-100 translate-y-0;
   }
 }
 
 /* Fade Effect for Page Transitions */
 .fade-enter {
-  opacity: 0;
+  @apply opacity-0;
 }
 
 .fade-enter-active {
-  opacity: 1;
-  transition: opacity 300ms;
+  @apply opacity-100 transition-opacity duration-300;
 }
 
 .fade-exit {
-  opacity: 1;
+  @apply opacity-100;
 }
 
 .fade-exit-active {
-  opacity: 0;
-  transition: opacity 300ms;
+  @apply opacity-0 transition-opacity duration-300;
 }
 
 /* Card hover effects */
 .card-hover {
-  transition: all 0.3s ease;
-  transform-origin: center;
+  @apply transition-all duration-300 ease-in-out origin-center;
 }
 
 .card-hover:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  @apply -translate-y-1 shadow-lg;
 }
 
 /* Floating animation */
@@ -128,7 +115,7 @@
 
 /* Gradient shift animation for cards */
 .gradient-shift {
-  background-size: 200% 200%;
+  @apply bg-[length:200%_200%];
   animation: gradient-position 15s ease infinite;
 }
 
@@ -140,11 +127,11 @@
 
 /* Subtle scale effect */
 .scale-hover {
-  transition: transform 0.3s ease;
+  @apply transition-transform duration-300 ease-in-out;
 }
 
 .scale-hover:hover {
-  transform: scale(1.02);
+  @apply scale-[1.02];
 }
 
 /* Glow pulse effect */
@@ -171,22 +158,16 @@
 
 /* Text underline animation */
 .animate-underline {
-  position: relative;
+  @apply relative;
 }
 
 .animate-underline::after {
+  @apply absolute w-0 h-0.5 -bottom-0.5 left-0 bg-current transition-[width] duration-300 ease-in-out;
   content: '';
-  position: absolute;
-  width: 0;
-  height: 2px;
-  bottom: -2px;
-  left: 0;
-  background-color: currentColor;
-  transition: width 0.3s ease;
 }
 
 .animate-underline:hover::after {
-  width: 100%;
+  @apply w-full;
 }
 
 /* Card background pulse */
@@ -195,52 +176,51 @@
 }
 
 @keyframes bg-pulse {
-  0%, 100% { background-opacity: 0.7; }
-  50% { background-opacity: 0.9; }
+  0%, 100% { @apply bg-opacity-70; }
+  50% { @apply bg-opacity-90; }
 }
 
-/* 3D card tilt effect (with pointer events) */
+/* Tilt effect */
 .tilt-card {
-  transition: transform 0.2s ease;
+  @apply transition-transform duration-300 ease-in-out;
   transform-style: preserve-3d;
+  perspective: 1000px;
 }
 
-/* Blur in effect for modals/popovers */
+.tilt-card:hover {
+  transform: rotateX(5deg) rotateY(5deg);
+}
+
+/* Blur in animation */
 .blur-in {
-  animation: blur-in 0.3s forwards;
+  animation: blur-in 0.5s ease-out forwards;
 }
 
 @keyframes blur-in {
-  from {
-    opacity: 0;
-    filter: blur(8px);
+  0% {
+    @apply opacity-0 blur-lg;
   }
-  to {
-    opacity: 1;
-    filter: blur(0);
+  100% {
+    @apply opacity-100 blur-none;
   }
 }
 
 /* Badge ping animation */
 .badge-ping {
-  position: relative;
+  @apply relative;
 }
 
 .badge-ping::after {
+  @apply absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500;
   content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: #ef4444;
   animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
 @keyframes ping {
+  0% {
+    @apply transform scale-100 opacity-100;
+  }
   75%, 100% {
-    transform: scale(2);
-    opacity: 0;
+    @apply transform scale-150 opacity-0;
   }
 }

@@ -1,0 +1,41 @@
+{
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "tailwindCSS.experimental.classRegex": [
+    ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
+    ["cn\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"]
+  ],
+  "[dockerfile]": {
+    "editor.defaultFormatter": "ms-azuretools.vscode-docker",
+    "editor.formatOnSave": true,
+    "editor.rulers": [80],
+    "editor.tabSize": 4
+  },
+  "files.associations": {
+    "*.code-snippets": "jsonc",
+    "Dockerfile*": "dockerfile",
+    "docker-compose*.yml": "dockercompose",
+    ".dockerignore": "ignore"
+  },
+  "dockerfile-utils.validations": {
+    "*.code-snippets": false,
+    "dockerfiles.linting": true,
+    "dockerfiles.languageserver": true,
+    "dockerfiles.scanForSecurityIssues": true
+  },
+  "docker.languageserver.formatter.ignoreMultilineInstructions": true,
+  "docker.commands.build": {
+    "template": "docker build --pull --rm --no-cache -f \"${dockerfile}\" -t ${tag} \"${context}\""
+  },
+  "docker.commands.run": {
+    "template": "docker run -it --rm ${tag}"
+  },
+  "docker.explorerRefreshInterval": 3000,
+  "docker.truncateMaxLength": 50,
+  "docker.showStartPage": false
+} 
