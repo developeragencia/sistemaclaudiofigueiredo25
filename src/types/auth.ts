@@ -55,9 +55,7 @@ export interface Role {
   id: string;
 }
 
-export interface User {
-  id: string;
-  email: string;
-  name: string;
+export interface User extends SupabaseUser {
   roles: Role[];
+  permissions?: string[];
 } 

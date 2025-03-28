@@ -29,7 +29,7 @@ const proposalSchema = z.object({
 
 type ProposalFormData = z.infer<typeof proposalSchema>;
 
-export function Proposals() {
+export default function Proposals() {
   const [search, setSearch] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { data, isLoading, createProposal } = useProposals({

@@ -217,7 +217,7 @@ export default function NewProposal() {
         <div className="mt-8 flex justify-end">
           <Button type="submit">
             Criar Proposta
-          </Button>
+                </Button>
               </div>
             </form>
     </div>

@@ -11,20 +11,18 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    port: 3000,
+    host: true,
+  },
   build: {
     outDir: 'dist',
     sourcemap: true,
     rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-        },
-      },
-    },
-  },
-  server: {
-    port: 3000,
-    host: true,
+      input: {
+        main: path.resolve(__dirname, 'index.html')
+      }
+    }
   },
   preview: {
     port: 3000,
@@ -32,9 +30,5 @@ export default defineConfig({
   },
   define: {
     'process.env': {},
-  },
-  optimizeDeps: {
-    include: ['react', 'react-dom', 'react-router-dom'],
-    exclude: [],
-  },
+  }
 })
