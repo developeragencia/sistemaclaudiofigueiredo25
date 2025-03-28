@@ -12,17 +12,19 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
+import { DatePicker } from '@/components/ui/date-picker';
+import { logger } from '@/lib/logger';
 
 export function SystemAudit() {
   const [search, setSearch] = useState('');
   const [action, setAction] = useState<string>('');
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
-  const { data, isLoading } = useSystemAudit({
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const { data, isLoading, error } = useSystemAudit({
     search,
     action,
-    start_date: startDate,
-    end_date: endDate
+    start_date: startDate ? format(startDate, 'yyyy-MM-dd') : undefined,
+    end_date: endDate ? format(endDate, 'yyyy-MM-dd') : undefined
   });
   const { toast } = useToast();
 
@@ -121,6 +123,15 @@ export function SystemAudit() {
     }
   };
 
+  if (isLoading) {
+    return <div>Carregando...</div>;
+  }
+
+  if (error) {
+    logger.error('Erro ao carregar dados de auditoria', { error });
+    return <div>Erro ao carregar dados de auditoria</div>;
+  }
+
   return (
     <div className="space-y-6 p-8">
       <div className="flex items-center justify-between">
@@ -179,19 +190,19 @@ export function SystemAudit() {
 
             <div className="space-y-2">
               <Label>Data Inicial</Label>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+              <DatePicker
+                selected={startDate}
+                onChange={setStartDate}
+                placeholderText="Data inicial"
               />
             </div>
 
             <div className="space-y-2">
               <Label>Data Final</Label>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+              <DatePicker
+                selected={endDate}
+                onChange={setEndDate}
+                placeholderText="Data final"
               />
             </div>
           </div>
@@ -220,15 +231,7 @@ export function SystemAudit() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center">
-                      <div className="flex items-center justify-center">
-                        <Loader2 className="h-6 w-6 animate-spin" />
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : data?.items && data.items.length > 0 ? (
+                {data?.items && data.items.length > 0 ? (
                   data.items.map((audit) => (
                     <TableRow key={audit.id}>
                       <TableCell>

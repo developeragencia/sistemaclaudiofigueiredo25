@@ -4,6 +4,7 @@ import { User } from '@/types/user';
 import { logger } from '@/lib/logger';
 import { RateLimiter } from '@/lib/rateLimiting';
 import { validatePassword } from '@/lib/passwordValidation';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 
 // Rate limiter para tentativas de login
 const loginRateLimiter = new RateLimiter(5, 60 * 1000); // 5 tentativas por minuto
@@ -259,6 +260,104 @@ class AuthService {
       logger.error('Erro inesperado no upload do avatar', { userId, error });
       throw error;
     }
+  }
+
+  async signIn(email: string, password: string) {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) throw error;
+    return data;
+  }
+
+  async signOut() {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+  }
+
+  async resetPassword(email: string) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) throw error;
+    return { success: true };
+  }
+
+  async updatePassword(password: string) {
+    const validationResult = validatePassword(password);
+    if (!validationResult.isValid) {
+      throw new Error(validationResult.errors.join(', '));
+    }
+
+    const { error } = await supabase.auth.updateUser({
+      password
+    });
+
+    if (error) throw error;
+    return { success: true };
+  }
+
+  async getCurrentUser(): Promise<SupabaseUser | null> {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error) throw error;
+    return user;
+  }
+
+  async updateAvatar(file: File) {
+    const user = await this.getCurrentUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, file, { upsert: true });
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl }, error: urlError } = await supabase.storage
+      .from('avatars')
+      .getPublicUrl(fileName);
+
+    if (urlError) throw urlError;
+
+    const { error: updateError } = await supabase.auth.updateUser({
+      data: { avatar_url: publicUrl }
+    });
+
+    if (updateError) throw updateError;
+
+    return { url: publicUrl };
+  }
+
+  async updateUser(data: { name?: string; email?: string }) {
+    const { error } = await supabase.auth.updateUser({
+      email: data.email,
+      data: { name: data.name }
+    });
+
+    if (error) throw error;
+    return { success: true };
+  }
+
+  async getUsers(filters: { search?: string; role?: string } = {}) {
+    let query = supabase.from('users').select('*');
+
+    if (filters.search) {
+      query = query.or(`email.ilike.%${filters.search}%,name.ilike.%${filters.search}%`);
+    }
+
+    if (filters.role) {
+      query = query.eq('role', filters.role);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    return {
+      data: data || []
+    };
   }
 }
 

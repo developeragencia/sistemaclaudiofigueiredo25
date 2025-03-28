@@ -12,13 +12,15 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
+import { DatePicker } from '@/components/ui/date-picker';
+import { logger } from '@/lib/logger';
 
 export function SystemLogs() {
   const [search, setSearch] = useState('');
   const [level, setLevel] = useState<string>('');
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
-  const { data, isLoading } = useSystemLogs({
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const { data, isLoading, error } = useSystemLogs({
     search,
     level,
     start_date: startDate,
@@ -118,6 +120,15 @@ export function SystemLogs() {
     }
   };
 
+  if (isLoading) {
+    return <div>Carregando...</div>;
+  }
+
+  if (error) {
+    logger.error('Erro ao carregar logs do sistema', { error });
+    return <div>Erro ao carregar logs do sistema</div>;
+  }
+
   return (
     <div className="space-y-6 p-8">
       <div className="flex items-center justify-between">
@@ -175,19 +186,19 @@ export function SystemLogs() {
 
             <div className="space-y-2">
               <Label>Data Inicial</Label>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+              <DatePicker
+                selected={startDate}
+                onChange={setStartDate}
+                placeholderText="Data inicial"
               />
             </div>
 
             <div className="space-y-2">
               <Label>Data Final</Label>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+              <DatePicker
+                selected={endDate}
+                onChange={setEndDate}
+                placeholderText="Data final"
               />
             </div>
           </div>
@@ -215,15 +226,7 @@ export function SystemLogs() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                      <div className="flex items-center justify-center">
-                        <Loader2 className="h-6 w-6 animate-spin" />
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : data?.items && data.items.length > 0 ? (
+                {data?.items && data.items.length > 0 ? (
                   data.items.map((log) => (
                     <TableRow key={log.id}>
                       <TableCell>

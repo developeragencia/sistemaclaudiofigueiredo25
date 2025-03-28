@@ -1,15 +1,16 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { toast } from 'sonner'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -19,10 +20,12 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>
 
 export default function Login() {
-  const { signIn } = useAuth()
-  const [isLoading, setIsLoading] = useState(false)
+  const navigate = useNavigate()
+  const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
   
   const {
     register,
@@ -34,13 +37,14 @@ export default function Login() {
 
   async function handleLogin(data: LoginFormData) {
     try {
-      setIsLoading(true)
-      await signIn(data.email, data.password)
+      setLoading(true)
+      await login(data.email, data.password)
+      navigate('/')
       toast.success('Login realizado com sucesso!')
-    } catch (error) {
-      toast.error('Credenciais inválidas')
+    } catch (err) {
+      setError('Falha ao fazer login. Verifique suas credenciais.')
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
@@ -55,6 +59,11 @@ export default function Login() {
         </CardHeader>
         <form onSubmit={handleSubmit(handleLogin)}>
           <CardContent className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -63,7 +72,7 @@ export default function Login() {
                 placeholder="seu@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                disabled={isLoading}
+                disabled={loading}
               />
               {errors.email && (
                 <span className="text-sm text-red-500">
@@ -79,7 +88,7 @@ export default function Login() {
                 placeholder="******"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
+                disabled={loading}
               />
               {errors.password && (
                 <span className="text-sm text-red-500">
@@ -92,9 +101,9 @@ export default function Login() {
             <Button
               type="submit"
               className="w-full"
-              disabled={isLoading}
+              disabled={loading}
             >
-              {isLoading ? <LoadingSpinner /> : 'Entrar'}
+              {loading ? <LoadingSpinner /> : 'Entrar'}
             </Button>
             <div className="text-sm text-center">
               <Link

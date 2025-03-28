@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
+import { UserForm } from '@/components/users/UserForm';
 
 const userSchema = z.object({
   name: z.string().min(1, 'O nome é obrigatório'),
@@ -179,69 +180,7 @@ export function Users() {
                 </DialogDescription>
               </DialogHeader>
 
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome</Label>
-                  <Input
-                    id="name"
-                    {...register('name')}
-                    error={errors.name?.message}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email">E-mail</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    {...register('email')}
-                    error={errors.email?.message}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="role">Papel</Label>
-                  <Select onValueChange={(value) => register('role').onChange({ target: { value } })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um papel" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ADMIN">Administrador</SelectItem>
-                      <SelectItem value="MANAGER">Gerente</SelectItem>
-                      <SelectItem value="USER">Usuário</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {errors.role && (
-                    <p className="text-sm text-red-500">{errors.role.message}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="password">Senha</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    {...register('password')}
-                    error={errors.password?.message}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="confirm_password">Confirmar Senha</Label>
-                  <Input
-                    id="confirm_password"
-                    type="password"
-                    {...register('confirm_password')}
-                    error={errors.confirm_password?.message}
-                  />
-                </div>
-
-                <DialogFooter>
-                  <Button type="submit">
-                    Criar Usuário
-                  </Button>
-                </DialogFooter>
-              </form>
+              <UserForm onSubmit={onSubmit} />
             </DialogContent>
           </Dialog>
 

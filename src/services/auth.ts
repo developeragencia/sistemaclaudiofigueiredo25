@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { LoginCredentials, ResetPasswordData, UpdatePasswordData } from '@/types/auth'
 import { CreateUserData, UpdateUserData, User, UserFilters, UserResponse } from '@/types/user'
+import { supabase } from '@/lib/supabase';
 
 interface SignInInput {
   email: string;
@@ -78,9 +79,10 @@ export const authService = {
     return !!this.getToken();
   },
 
-  async resetPassword({ email }: ResetPasswordData) {
+  async resetPassword(email: string) {
     const { error } = await supabase.auth.resetPasswordForEmail(email)
     if (error) throw error
+    return { success: true }
   },
 
   async updatePassword({ password, token }: UpdatePasswordData) {
@@ -103,18 +105,22 @@ export const authService = {
   },
 
   async updateAvatar(userId: string, file: File) {
-    const fileExt = file.name.split('.').pop()
-    const filePath = `${userId}/avatar.${fileExt}`
+    const { error } = await supabase
+      .storage
+      .from('avatars')
+      .upload(`${userId}/${file.name}`, file)
+
+    if (error) throw error
 
     const { error: uploadError } = await supabase.storage
       .from('avatars')
-      .upload(filePath, file, { upsert: true })
+      .upload(`${userId}/avatar`, file)
 
     if (uploadError) throw uploadError
 
     const { data: { publicUrl } } = supabase.storage
       .from('avatars')
-      .getPublicUrl(filePath)
+      .getPublicUrl(`${userId}/avatar`)
 
     const { error: updateError } = await supabase
       .from('users')
@@ -123,7 +129,7 @@ export const authService = {
 
     if (updateError) throw updateError
 
-    return publicUrl
+    return { publicUrl }
   },
 
   async listUsers(filters: UserFilters): Promise<UserResponse> {
@@ -156,6 +162,32 @@ export const authService = {
       page: filters.page || 1,
       limit: filters.limit || 10
     }
+  },
+
+  async updateUser(data: Partial<User>) {
+    const { data: userData, error } = await supabase.auth.updateUser({
+      data: {
+        ...data
+      }
+    })
+    if (error) throw error
+    return userData
+  },
+
+  async getUsers(filters = {}) {
+    let query = supabase
+      .from('users')
+      .select('*')
+
+    if (filters.role) {
+      query = query.eq('role', filters.role)
+    }
+
+    const { data, error } = await query
+
+    if (error) throw error
+
+    return data
   }
 }
 

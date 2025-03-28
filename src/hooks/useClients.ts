@@ -1,79 +1,220 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { clientService } from '@/services/clientService';
-import { useToast } from '@/components/ui/use-toast';
-import { Client } from '@/types/user';
+import { supabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
 import { toast } from 'sonner';
-import { ClientFilters, CreateClientData, UpdateClientData } from '@/types/client';
 
-interface UseClientsParams {
-  page?: number;
-  limit?: number;
-  search?: string;
-  status?: 'active' | 'inactive' | 'pending';
-  type?: 'public' | 'private';
-  enabled?: boolean;
-  assignedOnly?: boolean;
-  salesRepOnly?: boolean;
+export interface Client {
+  id: string;
+  razaoSocial: string;
+  cnpj: string;
+  email: string;
+  telefone: string;
+  endereco: string;
+  cidade: string;
+  estado: string;
+  cep: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  createdAt: string;
+  updatedAt: string;
 }
 
-export function useClients(filters: ClientFilters = {}) {
+export interface ClientResponse {
+  items: Client[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface ClientFilters {
+  search?: string;
+  status?: 'ACTIVE' | 'INACTIVE';
+  page?: number;
+  limit?: number;
+}
+
+export interface CreateClientData {
+  razaoSocial: string;
+  cnpj: string;
+  email: string;
+  telefone: string;
+  endereco: string;
+  cidade: string;
+  estado: string;
+  cep: string;
+}
+
+export interface UpdateClientData extends Partial<CreateClientData> {
+  id: string;
+  status?: 'ACTIVE' | 'INACTIVE';
+}
+
+interface UseClientsProps extends ClientFilters {}
+
+interface UseClientsReturn {
+  clients: ClientResponse | undefined;
+  isLoading: boolean;
+  error: Error | null;
+  createClient: (data: CreateClientData) => Promise<void>;
+  updateClient: (data: UpdateClientData) => Promise<void>;
+  deleteClient: (id: string) => Promise<void>;
+  isCreating: boolean;
+  isUpdating: boolean;
+  isDeleting: boolean;
+}
+
+export function useClients(props: UseClientsProps = {}): UseClientsReturn {
   const queryClient = useQueryClient();
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['clients', filters],
-    queryFn: () => clientService.listClients(filters)
+  const {
+    data: clients,
+    isLoading,
+    error
+  } = useQuery<ClientResponse, Error>({
+    queryKey: ['clients', props],
+    queryFn: async () => {
+      try {
+        let query = supabase
+          .from('clients')
+          .select('*')
+          .order('razao_social', { ascending: true });
+
+        if (props.search) {
+          query = query.or(`razao_social.ilike.%${props.search}%,cnpj.ilike.%${props.search}%`);
+        }
+
+        if (props.status) {
+          query = query.eq('status', props.status);
+        }
+
+        const { data, error } = await query
+          .range(((props.page || 1) - 1) * (props.limit || 10), (props.page || 1) * (props.limit || 10) - 1);
+
+        if (error) throw error;
+
+        const { count } = await query.count();
+
+        return {
+          items: data.map((item) => ({
+            id: item.id,
+            razaoSocial: item.razao_social,
+            cnpj: item.cnpj,
+            email: item.email,
+            telefone: item.telefone,
+            endereco: item.endereco,
+            cidade: item.cidade,
+            estado: item.estado,
+            cep: item.cep,
+            status: item.status,
+            createdAt: item.created_at,
+            updatedAt: item.updated_at
+          })),
+          total: count,
+          page: props.page || 1,
+          limit: props.limit || 10
+        };
+      } catch (error) {
+        logger.error('Error fetching clients:', error);
+        throw new Error('Não foi possível carregar os clientes');
+      }
+    }
   });
 
-  const createMutation = useMutation({
-    mutationFn: (data: CreateClientData) => clientService.createClient(data),
+  const createClient = useMutation({
+    mutationFn: async (data: CreateClientData) => {
+      try {
+        const { error } = await supabase.from('clients').insert({
+          razao_social: data.razaoSocial,
+          cnpj: data.cnpj,
+          email: data.email,
+          telefone: data.telefone,
+          endereco: data.endereco,
+          cidade: data.cidade,
+          estado: data.estado,
+          cep: data.cep,
+          status: 'ACTIVE'
+        });
+
+        if (error) throw error;
+      } catch (error) {
+        logger.error('Error creating client:', error);
+        throw new Error('Não foi possível criar o cliente');
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       toast.success('Cliente criado com sucesso');
     },
     onError: (error) => {
-      console.error('Error creating client:', error);
-      toast.error('Erro ao criar cliente');
+      toast.error(error.message);
     }
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateClientData }) =>
-      clientService.updateClient(id, data),
+  const updateClient = useMutation({
+    mutationFn: async (data: UpdateClientData) => {
+      try {
+        const { error } = await supabase
+          .from('clients')
+          .update({
+            ...(data.razaoSocial && { razao_social: data.razaoSocial }),
+            ...(data.cnpj && { cnpj: data.cnpj }),
+            ...(data.email && { email: data.email }),
+            ...(data.telefone && { telefone: data.telefone }),
+            ...(data.endereco && { endereco: data.endereco }),
+            ...(data.cidade && { cidade: data.cidade }),
+            ...(data.estado && { estado: data.estado }),
+            ...(data.cep && { cep: data.cep }),
+            ...(data.status && { status: data.status })
+          })
+          .eq('id', data.id);
+
+        if (error) throw error;
+      } catch (error) {
+        logger.error('Error updating client:', error);
+        throw new Error('Não foi possível atualizar o cliente');
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       toast.success('Cliente atualizado com sucesso');
     },
     onError: (error) => {
-      console.error('Error updating client:', error);
-      toast.error('Erro ao atualizar cliente');
+      toast.error(error.message);
     }
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => clientService.deleteClient(id),
+  const deleteClient = useMutation({
+    mutationFn: async (id: string) => {
+      try {
+        const { error } = await supabase
+          .from('clients')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+      } catch (error) {
+        logger.error('Error deleting client:', error);
+        throw new Error('Não foi possível excluir o cliente');
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       toast.success('Cliente excluído com sucesso');
     },
     onError: (error) => {
-      console.error('Error deleting client:', error);
-      toast.error('Erro ao excluir cliente');
+      toast.error(error.message);
     }
   });
 
   return {
-    clients: data?.clients || [],
-    total: data?.total || 0,
-    page: data?.page || 1,
-    limit: data?.limit || 10,
+    clients,
     isLoading,
     error,
-    createClient: createMutation.mutate,
-    updateClient: updateMutation.mutate,
-    deleteClient: deleteMutation.mutate,
-    isCreating: createMutation.isPending,
-    isUpdating: updateMutation.isPending,
-    isDeleting: deleteMutation.isPending
+    createClient: createClient.mutateAsync,
+    updateClient: updateClient.mutateAsync,
+    deleteClient: deleteClient.mutateAsync,
+    isCreating: createClient.isPending,
+    isUpdating: updateClient.isPending,
+    isDeleting: deleteClient.isPending
   };
 }
 

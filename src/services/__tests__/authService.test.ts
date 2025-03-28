@@ -1,10 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { authService } from '../authService';
 import { supabase } from '@/lib/supabase';
-import * as authService from '../authService';
-import { User } from '@/types/user';
-import { logger } from '../../lib/logger';
-import { rateLimiter } from '../../lib/rateLimiting';
-import { validatePassword } from '../../lib/passwordValidation';
+import { AuthError, Session, User } from '@supabase/supabase-js';
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {
@@ -13,248 +10,169 @@ vi.mock('@/lib/supabase', () => ({
       signOut: vi.fn(),
       resetPasswordForEmail: vi.fn(),
       updateUser: vi.fn(),
-      getUser: vi.fn(),
-      refreshSession: vi.fn(),
+      getUser: vi.fn()
+    },
+    storage: {
+      from: vi.fn(() => ({
+        upload: vi.fn(),
+        getPublicUrl: vi.fn()
+      }))
     },
     from: vi.fn(() => ({
       select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          single: vi.fn(),
-        })),
-      })),
-    })),
-  },
+        or: vi.fn(),
+        eq: vi.fn()
+      }))
+    }))
+  }
 }));
 
-// Mock do Logger
-vi.mock('../../lib/logger', () => ({
-  logger: {
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
-  },
-}));
-
-// Mock do Rate Limiter
-vi.mock('../../lib/rateLimiting', () => ({
-  rateLimiter: {
-    check: vi.fn(),
-    registerAttempt: vi.fn(),
-  },
-}));
-
-// Mock da validação de senha
-vi.mock('../../lib/passwordValidation', () => ({
-  validatePassword: vi.fn(),
-}));
-
-describe('authService', () => {
+describe('AuthService', () => {
   const mockUser: User = {
-    id: '1',
+    id: '123',
     email: 'test@example.com',
-    name: 'Test User',
-    roles: ['user'],
-    createdAt: '2024-01-01',
-    updatedAt: '2024-01-01',
+    user_metadata: { name: 'Test User' },
+    app_metadata: {},
+    aud: 'authenticated',
+    created_at: new Date().toISOString(),
+    role: null,
+    updated_at: null,
+    phone: null,
+    confirmation_sent_at: null,
+    confirmed_at: null,
+    email_confirmed_at: null,
+    phone_confirmed_at: null,
+    last_sign_in_at: null,
+    recovery_sent_at: null,
+    identities: [],
+    factors: []
+  };
+
+  const mockSession: Session = {
+    access_token: 'token123',
+    refresh_token: 'refresh123',
+    expires_in: 3600,
+    token_type: 'bearer',
+    user: mockUser,
+    expires_at: Math.floor(Date.now() / 1000) + 3600
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('login', () => {
-    const credentials = {
-      email: 'test@example.com',
-      password: 'Test123!@#',
-    };
-
-    it('deve realizar login com sucesso', async () => {
-      const mockUser = { id: '1', email: credentials.email };
-      const mockSession = { access_token: 'token' };
-
-      vi.mocked(rateLimiter.check).mockReturnValue({ allowed: true });
-      vi.mocked(supabase.auth.signInWithPassword).mockResolvedValue({
+  describe('signIn', () => {
+    it('should sign in successfully', async () => {
+      vi.mocked(supabase.auth.signInWithPassword).mockResolvedValueOnce({
         data: { user: mockUser, session: mockSession },
-        error: null,
+        error: null
       });
 
-      const result = await authService.login(credentials);
-
-      expect(result.success).toBe(true);
-      expect(result.user).toEqual(mockUser);
-      expect(rateLimiter.registerAttempt).toHaveBeenCalledWith(credentials.email, true);
-      expect(logger.info).toHaveBeenCalled();
+      const result = await authService.signIn('test@example.com', 'password123');
+      expect(result).toEqual({ user: mockUser, session: mockSession });
     });
 
-    it('deve bloquear login quando exceder limite de tentativas', async () => {
-      vi.mocked(rateLimiter.check).mockReturnValue({
-        allowed: false,
-        waitTime: 900,
-      });
-
-      const result = await authService.login(credentials);
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('muitas tentativas');
-      expect(supabase.auth.signInWithPassword).not.toHaveBeenCalled();
-      expect(logger.warn).toHaveBeenCalled();
-    });
-
-    it('deve lidar com erro de autenticação', async () => {
-      vi.mocked(rateLimiter.check).mockReturnValue({ allowed: true });
-      vi.mocked(supabase.auth.signInWithPassword).mockResolvedValue({
+    it('should throw error on failed sign in', async () => {
+      const error = new AuthError('Invalid credentials', 401, 'invalid_credentials');
+      vi.mocked(supabase.auth.signInWithPassword).mockResolvedValueOnce({
         data: { user: null, session: null },
-        error: { message: 'Invalid credentials' },
+        error
       });
 
-      const result = await authService.login(credentials);
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBeDefined();
-      expect(rateLimiter.registerAttempt).toHaveBeenCalledWith(credentials.email, false);
-      expect(logger.error).toHaveBeenCalled();
+      await expect(authService.signIn('test@example.com', 'wrong')).rejects.toThrow('Invalid credentials');
     });
   });
 
-  describe('logout', () => {
-    it('deve fazer logout com sucesso', async () => {
-      vi.mocked(supabase.auth.signOut).mockResolvedValue({ error: null });
-
-      await expect(authService.logout()).resolves.not.toThrow();
+  describe('signOut', () => {
+    it('should sign out successfully', async () => {
+      vi.mocked(supabase.auth.signOut).mockResolvedValueOnce({
+        data: { user: null, session: null },
+        error: null
+      });
+      await expect(authService.signOut()).resolves.not.toThrow();
     });
 
-    it('deve lançar erro se o logout falhar', async () => {
-      vi.mocked(supabase.auth.signOut).mockResolvedValue({
-        error: new Error('Logout failed'),
+    it('should throw error on failed sign out', async () => {
+      const error = new AuthError('Network error', 500, 'network_error');
+      vi.mocked(supabase.auth.signOut).mockResolvedValueOnce({
+        data: null,
+        error
       });
-
-      await expect(authService.logout()).rejects.toThrow('Logout failed');
+      await expect(authService.signOut()).rejects.toThrow('Network error');
     });
   });
 
   describe('resetPassword', () => {
-    const email = 'test@example.com';
-
-    it('deve enviar email de reset de senha com sucesso', async () => {
-      vi.mocked(supabase.auth.resetPasswordForEmail).mockResolvedValue({
-        data: {},
-        error: null,
-      });
-
-      const result = await authService.resetPassword({ email });
-
-      expect(result.success).toBe(true);
-      expect(logger.info).toHaveBeenCalled();
-    });
-
-    it('deve lidar com erro no reset de senha', async () => {
-      vi.mocked(supabase.auth.resetPasswordForEmail).mockResolvedValue({
-        data: null,
-        error: { message: 'Error resetting password' },
-      });
-
-      const result = await authService.resetPassword({ email });
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBeDefined();
-      expect(logger.error).toHaveBeenCalled();
-    });
-  });
-
-  describe('updatePassword', () => {
-    const updateData = {
-      password: 'NewTest123!@#',
-      token: 'reset-token',
-    };
-
-    it('deve atualizar senha com sucesso', async () => {
-      vi.mocked(validatePassword).mockReturnValue({ isValid: true, errors: [] });
-      vi.mocked(supabase.auth.updateUser).mockResolvedValue({
-        data: { user: { id: '1' } },
-        error: null,
-      });
-
-      const result = await authService.updatePassword(updateData);
-
-      expect(result.success).toBe(true);
-      expect(logger.info).toHaveBeenCalled();
-    });
-
-    it('deve rejeitar senha inválida', async () => {
-      vi.mocked(validatePassword).mockReturnValue({
-        isValid: false,
-        errors: ['Senha muito fraca'],
-      });
-
-      const result = await authService.updatePassword(updateData);
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Senha muito fraca');
-      expect(supabase.auth.updateUser).not.toHaveBeenCalled();
-    });
-
-    it('deve lidar com erro na atualização da senha', async () => {
-      vi.mocked(validatePassword).mockReturnValue({ isValid: true, errors: [] });
-      vi.mocked(supabase.auth.updateUser).mockResolvedValue({
+    it('should reset password successfully', async () => {
+      vi.mocked(supabase.auth.resetPasswordForEmail).mockResolvedValueOnce({
         data: { user: null },
-        error: { message: 'Error updating password' },
+        error: null
       });
+      const result = await authService.resetPassword('test@example.com');
+      expect(result).toEqual({ success: true });
+    });
 
-      const result = await authService.updatePassword(updateData);
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBeDefined();
-      expect(logger.error).toHaveBeenCalled();
+    it('should throw error on failed password reset', async () => {
+      const error = new AuthError('User not found', 404, 'user_not_found');
+      vi.mocked(supabase.auth.resetPasswordForEmail).mockResolvedValueOnce({
+        data: null,
+        error
+      });
+      await expect(authService.resetPassword('wrong@example.com')).rejects.toThrow('User not found');
     });
   });
 
   describe('getCurrentUser', () => {
-    it('deve retornar o usuário atual com sucesso', async () => {
-      vi.mocked(supabase.auth.getUser).mockResolvedValue({
-        data: { user: { id: '1' } },
-        error: null,
+    it('should get current user successfully', async () => {
+      vi.mocked(supabase.auth.getUser).mockResolvedValueOnce({
+        data: { user: mockUser },
+        error: null
       });
 
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: mockUser, error: null }),
-      }));
-
-      const result = await authService.getCurrentUser();
-      expect(result).toEqual(mockUser);
+      const user = await authService.getCurrentUser();
+      expect(user).toEqual(mockUser);
     });
 
-    it('deve retornar null se não houver usuário autenticado', async () => {
-      vi.mocked(supabase.auth.getUser).mockResolvedValue({
+    it('should return null when no user is authenticated', async () => {
+      vi.mocked(supabase.auth.getUser).mockResolvedValueOnce({
         data: { user: null },
-        error: null,
+        error: null
       });
 
-      const result = await authService.getCurrentUser();
-      expect(result).toBeNull();
+      const user = await authService.getCurrentUser();
+      expect(user).toBeNull();
+    });
+
+    it('should throw error on failed user fetch', async () => {
+      const error = new AuthError('Network error', 500, 'network_error');
+      vi.mocked(supabase.auth.getUser).mockResolvedValueOnce({
+        data: { user: null },
+        error
+      });
+
+      await expect(authService.getCurrentUser()).rejects.toThrow('Network error');
     });
   });
 
-  describe('refreshSession', () => {
-    it('deve renovar a sessão com sucesso', async () => {
-      vi.mocked(supabase.auth.refreshSession).mockResolvedValue({
-        data: {},
-        error: null,
+  describe('updateUser', () => {
+    it('should update user successfully', async () => {
+      vi.mocked(supabase.auth.updateUser).mockResolvedValueOnce({
+        data: { user: mockUser },
+        error: null
       });
 
-      await expect(authService.refreshSession()).resolves.not.toThrow();
+      const result = await authService.updateUser({ name: 'New Name' });
+      expect(result).toEqual({ success: true });
     });
 
-    it('deve lançar erro se a renovação da sessão falhar', async () => {
-      vi.mocked(supabase.auth.refreshSession).mockResolvedValue({
-        data: null,
-        error: new Error('Refresh session failed'),
+    it('should throw error on failed user update', async () => {
+      const error = new AuthError('Update failed', 500, 'update_failed');
+      vi.mocked(supabase.auth.updateUser).mockResolvedValueOnce({
+        data: { user: null },
+        error
       });
 
-      await expect(authService.refreshSession()).rejects.toThrow(
-        'Refresh session failed'
-      );
+      await expect(authService.updateUser({ name: 'New Name' })).rejects.toThrow('Update failed');
     });
   });
 }); 

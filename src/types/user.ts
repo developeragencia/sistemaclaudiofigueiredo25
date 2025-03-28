@@ -1,45 +1,49 @@
 import { Role } from './auth';
 
-export type UserRole = 'ADMIN_MASTER' | 'OFFICE_PERMANENT' | 'OFFICE_TEMPORARY' | 'CLIENT' | 'SALES_REP';
+export type UserRole = 'ADMIN' | 'MANAGER' | 'ANALYST' | 'USER';
+
+export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'BLOCKED';
 
 export const USER_ROLE_LABELS: Record<UserRole, string> = {
-  ADMIN_MASTER: 'Administrador Master',
-  OFFICE_PERMANENT: 'Equipe Permanente',
-  OFFICE_TEMPORARY: 'Equipe Temporária',
-  CLIENT: 'Cliente',
-  SALES_REP: 'Representante Comercial'
+  ADMIN: 'Administrador',
+  MANAGER: 'Gerente',
+  ANALYST: 'Analista',
+  USER: 'Usuário'
 };
 
 export interface User {
   id: string;
-  name: string;
   email: string;
-  role: Role;
+  name: string;
+  role: UserRole;
+  status: UserStatus;
   avatar_url?: string;
   created_at: string;
   updated_at: string;
   last_login?: string;
-  status: 'active' | 'inactive' | 'blocked';
+  app_metadata: Record<string, any>;
+  user_metadata: Record<string, any>;
+  aud: string;
 }
 
 export interface CreateUserData {
-  name: string;
   email: string;
   password: string;
-  role: Role;
+  name: string;
+  role: UserRole;
 }
 
 export interface UpdateUserData {
   name?: string;
-  email?: string;
-  role?: Role;
-  status?: 'active' | 'inactive' | 'blocked';
+  role?: UserRole;
+  status?: UserStatus;
+  avatar_url?: string;
 }
 
 export interface UserFilters {
   search?: string;
-  role?: Role;
-  status?: 'active' | 'inactive' | 'blocked';
+  role?: UserRole;
+  status?: UserStatus;
   page?: number;
   limit?: number;
 }
@@ -75,7 +79,7 @@ export interface UserProfile {
   bio?: string;
   avatar?: string;
   role: UserRole;
-  status?: 'active' | 'inactive';
+  status?: UserStatus;
   notificationPreferences: {
     email: boolean;
     push: boolean;
@@ -170,4 +174,30 @@ export interface UserPermissions {
   canViewFinancialData: boolean;
   canExportData: boolean;
   canManageUsers: boolean;
+}
+
+export interface UpdatePasswordData {
+  password: string;
+}
+
+export interface ResetPasswordData {
+  email: string;
+}
+
+export interface UseUsersReturn {
+  users: User[];
+  total: number;
+  isLoading: boolean;
+  error: Error | null;
+  createUser: (data: CreateUserData) => Promise<User>;
+  updateUser: (id: string, data: UpdateUserData) => Promise<User>;
+  deleteUser: (id: string) => Promise<void>;
+}
+
+export interface UseUserReturn {
+  user: User | null;
+  isLoading: boolean;
+  error: Error | null;
+  updateUser: (data: Partial<User>) => Promise<void>;
+  deleteUser: () => Promise<void>;
 }

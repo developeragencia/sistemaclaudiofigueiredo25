@@ -1,128 +1,61 @@
-import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { LayoutDashboard, Users, FileText, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import {
-  LayoutDashboard,
-  Users,
-  FileText,
-  Settings,
-  Shield,
-  ClipboardList,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
-const navigation = [
+const menuItems = [
   {
-    name: 'Dashboard',
-    href: '/dashboard',
+    title: 'Dashboard',
     icon: LayoutDashboard,
+    href: '/'
   },
   {
-    name: 'Clientes',
-    href: '/clients',
+    title: 'Clientes',
     icon: Users,
+    href: '/clients'
   },
   {
-    name: 'Propostas',
-    href: '/proposals',
+    title: 'Propostas',
     icon: FileText,
+    href: '/proposals'
   },
   {
-    name: 'Contratos',
-    href: '/contracts',
-    icon: FileText,
-  },
+    title: 'Configurações',
+    icon: Settings,
+    href: '/settings'
+  }
 ];
 
-const adminNavigation = [
-  {
-    name: 'Usuários',
-    href: '/admin/users',
-    icon: Users,
-    roles: ['ADMIN', 'MASTER_ADMIN'],
-  },
-  {
-    name: 'Permissões',
-    href: '/admin/roles',
-    icon: Shield,
-    roles: ['MASTER_ADMIN'],
-  },
-  {
-    name: 'Auditoria',
-    href: '/admin/audit',
-    icon: ClipboardList,
-    roles: ['ADMIN', 'MASTER_ADMIN'],
-  },
-];
+export function Sidebar() {
+  const [isOpen, setIsOpen] = useState(true);
 
-interface NavItem {
-  href: string;
-  title: string;
-  icon?: React.ReactNode;
-  roles?: string[];
-}
-
-interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
-  items: NavItem[];
-}
-
-export function Sidebar({ className, items, ...props }: SidebarProps) {
-  const { user } = useAuth();
-  const location = useLocation();
-
-  const isActive = (href: string) => location.pathname === href;
-
-  const filteredItems = items.filter(item => {
-    if (!item.roles) return true;
-    return item.roles.some(role => 
-      user?.roles.some(userRole => userRole.name === role)
-    );
-  });
+  useEffect(() => {
+    const handler = () => setIsOpen(prev => !prev);
+    document.addEventListener('toggle-sidebar', handler);
+    return () => document.removeEventListener('toggle-sidebar', handler);
+  }, []);
 
   return (
-    <div className={cn('pb-12', className)} {...props}>
-      <div className="space-y-4 py-4">
-        <div className="px-3 py-2">
-          <div className="space-y-1">
-            <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
-              Menu
-            </h2>
-            <ScrollArea className="h-[300px] px-2">
-              <div className="space-y-1">
-                {filteredItems.map((item, index) => (
-                  <Button
-                    key={index}
-                    variant={isActive(item.href) ? 'secondary' : 'ghost'}
-                    className="w-full justify-start"
-                    asChild
-                  >
-                    <Link to={item.href} className="flex items-center">
-                      {item.icon}
-                      <span>{item.title}</span>
-                    </Link>
-                  </Button>
-                ))}
-              </div>
-            </ScrollArea>
-          </div>
-        </div>
-        <div className="px-3 py-2">
-          <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
-            Configurações
-          </h2>
-          <Button 
-            variant={isActive('/settings') ? 'secondary' : 'ghost'} 
-            className="w-full justify-start" 
-            asChild
-          >
-            <Link to="/settings" className="flex items-center">
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Configurações</span>
-            </Link>
-          </Button>
-        </div>
+    <aside className={cn(
+      "fixed left-0 top-0 z-40 h-screen w-64 border-r bg-card transition-transform",
+      !isOpen && "-translate-x-full"
+    )}>
+      <div className="flex h-16 items-center border-b px-6">
+        <h1 className="text-lg font-bold">Secure Bridge</h1>
       </div>
-    </div>
+      
+      <nav className="space-y-1 p-4">
+        {menuItems.map((item) => (
+          <Link
+            key={item.href}
+            to={item.href}
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-accent"
+          >
+            <item.icon className="h-4 w-4" />
+            {item.title}
+          </Link>
+        ))}
+      </nav>
+    </aside>
   );
 } 

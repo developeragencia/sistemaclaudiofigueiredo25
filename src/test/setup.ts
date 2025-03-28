@@ -6,40 +6,48 @@ import matchers from '@testing-library/jest-dom/matchers';
 // Estende os matchers do Vitest com os do @testing-library/jest-dom
 expect.extend(matchers);
 
-// Mock do ResizeObserver
-global.ResizeObserver = vi.fn().mockImplementation(() => ({
-  observe: vi.fn(),
-  unobserve: vi.fn(),
-  disconnect: vi.fn(),
-}));
+// Limpa todos os mocks após cada teste
+afterEach(() => {
+  cleanup();
+});
 
-// Mock do IntersectionObserver
-global.IntersectionObserver = vi.fn().mockImplementation(() => ({
-  observe: vi.fn(),
-  unobserve: vi.fn(),
-  disconnect: vi.fn(),
-}));
+// Mock ResizeObserver
+global.ResizeObserver = class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
 
-// Mock do matchMedia
+// Mock IntersectionObserver
+global.IntersectionObserver = class IntersectionObserver {
+  readonly root: Element | null = null;
+  readonly rootMargin: string = '0px';
+  readonly thresholds: ReadonlyArray<number> = [0];
+
+  constructor(private callback: IntersectionObserverCallback) {}
+
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+  takeRecords(): IntersectionObserverEntry[] {
+    return [];
+  }
+};
+
+// Mock matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation(query => ({
+  value: (query: string) => ({
     matches: false,
     media: query,
     onchange: null,
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  })),
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  }),
 });
 
-// Mock do scrollTo
-window.scrollTo = vi.fn();
-
-// Limpa todos os mocks após cada teste
-afterEach(() => {
-  vi.clearAllMocks();
-  cleanup();
-}); 
+// Mock scrollTo
+window.scrollTo = () => {}; 

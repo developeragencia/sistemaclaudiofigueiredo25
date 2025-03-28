@@ -1,115 +1,120 @@
-import { User, Client } from './user';
-import { Client as ClientType } from './client';
+import { User } from './user';
 
-export type ProposalStatus = 'PENDING' | 'ANALYZING' | 'APPROVED' | 'REJECTED' | 'CONVERTED';
+export type ProposalStatus = 'DRAFT' | 'PENDING' | 'ANALYZING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 
-export const PROPOSAL_STATUS_LABELS: Record<ProposalStatus, string> = {
-  PENDING: 'Aguardando análise',
-  ANALYZING: 'Em análise',
-  APPROVED: 'Aprovada',
-  REJECTED: 'Rejeitada',
-  CONVERTED: 'Convertida em contrato'
-};
+export interface ProposalDetails {
+  estimatedValue: number;
+  description: string;
+  periodStart: string;
+  periodEnd: string;
+  additionalNotes?: string;
+}
 
 export interface ProposalTimeline {
   id: string;
-  proposalId: string;
-  status?: ProposalStatus;
-  comment?: string;
+  status: ProposalStatus;
+  comments: string;
   userId: string;
-  userName?: string;
-  description?: string;
-  type?: string;
-  metadata?: any;
-  createdAt: string;
+  updatedAt: string;
 }
 
-export interface ProposalTimelineEvent {
+export interface Client {
   id: string;
-  type: 'CREATED' | 'UPDATED' | 'ANALYZED' | 'APPROVED' | 'REJECTED' | 'CONVERTED';
-  description: string;
-  userName: string;
-  metadata?: any;
-  createdAt: string;
-}
-
-export interface ProposalService {
-  id: string;
-  name: string;
-  description: string;
-  value: number;
-  recurrence: 'one_time' | 'monthly' | 'yearly';
+  razao_social: string;
+  cnpj: string;
+  email?: string;
+  phone?: string;
+  address?: string;
 }
 
 export interface Proposal {
   id: string;
-  client_id: string;
   title: string;
   description: string;
-  value: number;
-  status: 'DRAFT' | 'ANALYSIS' | 'APPROVED' | 'REJECTED';
-  created_at: string;
-  updated_at: string;
+  client: Client;
+  totalValue: number;
+  validUntil: string;
+  status: ProposalStatus;
+  details: ProposalDetails;
+  timeline: ProposalTimeline[];
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface ProposalDetails {
-  estimatedValue: number;
-  periodStart: Date;
-  periodEnd: Date;
-  serviceDescription: string;
-  additionalNotes?: string;
-  attachments?: string[]; // URLs dos anexos
-}
-
-export interface ProposalEvent {
-  id: string;
-  proposalId: string;
-  type: 'STATUS_CHANGE' | 'COMMENT' | 'DOCUMENT_ADDED';
+export interface CreateProposalData {
+  title: string;
   description: string;
-  userId: string;
-  createdAt: Date;
-  metadata?: Record<string, any>;
+  clientId: string;
+  totalValue: number;
+  validUntil: string;
+  details: ProposalDetails;
 }
 
-export interface Contract extends Omit<Proposal, 'status' | 'contractId'> {
-  id: string;
-  proposalId: string;
-  status: 'ACTIVE' | 'INACTIVE' | 'COMPLETED';
-  startDate: Date;
-  endDate: Date;
-  value: number;
-  paymentTerms: string;
-  documents: ContractDocument[];
+export interface UpdateProposalData {
+  title?: string;
+  description?: string;
+  totalValue?: number;
+  validUntil?: string;
+  details?: Partial<ProposalDetails>;
 }
 
-export interface ContractDocument {
-    id: string;
-  contractId: string;
-  type: 'CONTRACT' | 'AMENDMENT' | 'ATTACHMENT';
-    name: string;
-    url: string;
-  uploadedAt: Date;
-  uploadedBy: string;
+export interface UpdateProposalStatusData {
+  status: ProposalStatus;
+  comments: string;
 }
 
 export interface ProposalFilters {
   search?: string;
-  client_id?: string;
-  status?: 'DRAFT' | 'ANALYSIS' | 'APPROVED' | 'REJECTED';
+  status?: ProposalStatus;
+  clientId?: string;
+  startDate?: string;
+  endDate?: string;
   page?: number;
   limit?: number;
-  created_at?: {
-    gte?: string;
-    lte?: string;
-  };
 }
 
 export interface ProposalResponse {
-  items: Proposal[];
+  proposals: Proposal[];
   total: number;
   page: number;
   limit: number;
 }
+
+export interface UseProposalsReturn {
+  proposals: Proposal[];
+  total: number;
+  isLoading: boolean;
+  error: Error | null;
+  createProposal: (data: CreateProposalData) => Promise<Proposal>;
+  updateProposal: (id: string, data: UpdateProposalData) => Promise<Proposal>;
+  updateStatus: (id: string, data: UpdateProposalStatusData) => Promise<Proposal>;
+  deleteProposal: (id: string) => Promise<void>;
+}
+
+export interface UseProposalReturn {
+  proposal: Proposal | null;
+  isLoading: boolean;
+  error: Error | null;
+  updateStatus: (status: ProposalStatus, comments: string) => Promise<void>;
+}
+
+export const PROPOSAL_STATUS_LABELS: Record<ProposalStatus, string> = {
+  DRAFT: 'Rascunho',
+  PENDING: 'Pendente',
+  ANALYZING: 'Em Análise',
+  APPROVED: 'Aprovada',
+  REJECTED: 'Rejeitada',
+  CANCELLED: 'Cancelada'
+};
+
+export const PROPOSAL_STATUS_COLORS: Record<ProposalStatus, string> = {
+  DRAFT: 'gray',
+  PENDING: 'yellow',
+  ANALYZING: 'blue',
+  APPROVED: 'green',
+  REJECTED: 'red',
+  CANCELLED: 'gray'
+};
 
 // Tipos para análise automática de créditos
 export interface CreditAnalysis {
@@ -157,35 +162,50 @@ export interface CreditTransaction {
   }[];
 }
 
-export interface CreateProposalData {
-  client_id: string;
-  title: string;
+export interface Contract extends Omit<Proposal, 'status' | 'contractId'> {
+  id: string;
+  proposalId: string;
+  status: 'ACTIVE' | 'INACTIVE' | 'COMPLETED';
+  startDate: Date;
+  endDate: Date;
+  value: number;
+  paymentTerms: string;
+  documents: ContractDocument[];
+}
+
+export interface ContractDocument {
+    id: string;
+  contractId: string;
+  type: 'CONTRACT' | 'AMENDMENT' | 'ATTACHMENT';
+    name: string;
+    url: string;
+  uploadedAt: Date;
+  uploadedBy: string;
+}
+
+export interface ProposalTimelineEvent {
+  id: string;
+  type: 'CREATED' | 'UPDATED' | 'ANALYZED' | 'APPROVED' | 'REJECTED' | 'CONVERTED';
+  description: string;
+  userName: string;
+  metadata?: any;
+  createdAt: string;
+}
+
+export interface ProposalEvent {
+  id: string;
+  proposalId: string;
+  type: 'STATUS_CHANGE' | 'COMMENT' | 'DOCUMENT_ADDED';
+  description: string;
+  userId: string;
+  createdAt: Date;
+  metadata?: Record<string, any>;
+}
+
+export interface ProposalService {
+    id: string;
+  name: string;
   description: string;
   value: number;
-}
-
-export interface UpdateProposalData {
-  title?: string;
-  description?: string;
-  value?: number;
-  status?: 'DRAFT' | 'ANALYSIS' | 'APPROVED' | 'REJECTED';
-}
-
-export interface ProposalFormData {
-  id?: string;
-  title: string;
-  description: string;
-  clientId: string;
-  totalValue: number;
-  validUntil: string;
-}
-
-export interface Proposal extends ProposalFormData {
-  id: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  createdAt: string;
-  client: {
-    id: string;
-    razaoSocial: string;
-  };
+  recurrence: 'one_time' | 'monthly' | 'yearly';
 }

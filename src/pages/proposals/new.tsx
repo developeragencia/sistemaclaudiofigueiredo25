@@ -1,219 +1,225 @@
-import React from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
-import { createProposal } from '@/services/proposalService';
+import React, { useState } from 'react';
+import { useRouter } from 'next/router';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/components/ui/use-toast';
-import { useActiveClient } from '@/contexts/ActiveClientContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select } from '@/components/ui/select';
+import { DatePicker } from '@/components/ui/date-picker';
+import { useProposals } from '@/hooks/useProposals';
+import { useClients } from '@/hooks/useClients';
+import { useAuth } from '@/hooks/useAuth';
+import { CreateProposalData } from '@/types/proposal';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
-const proposalSchema = z.object({
-  clientCNPJ: z.string().min(14, 'CNPJ inválido'),
-  clientName: z.string().min(3, 'Nome do cliente é obrigatório'),
-  estimatedValue: z.string().min(1, 'Valor estimado é obrigatório'),
-  periodStart: z.string().min(1, 'Data inicial é obrigatória'),
-  periodEnd: z.string().min(1, 'Data final é obrigatória'),
-  serviceDescription: z.string().min(10, 'Descrição do serviço é obrigatória'),
-  additionalNotes: z.string().optional(),
-});
+export default function NewProposal() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const { createProposal } = useProposals();
+  const { clients } = useClients({});
 
-type ProposalFormData = z.infer<typeof proposalSchema>;
-
-export function NewProposal() {
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const { client: activeClient } = useActiveClient();
-
-  const form = useForm<ProposalFormData>({
-    resolver: zodResolver(proposalSchema),
-    defaultValues: {
-      clientCNPJ: activeClient?.cnpj || '',
-      clientName: activeClient?.corporateName || '',
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    clientId: '',
+    totalValue: '',
+    validUntil: '',
+    details: {
       estimatedValue: '',
+      description: '',
       periodStart: '',
       periodEnd: '',
-      serviceDescription: '',
-      additionalNotes: '',
-    },
+      additionalNotes: ''
+    }
   });
 
-  const createProposalMutation = useMutation({
-    mutationFn: (data: ProposalFormData) =>
-      createProposal({
-        clientCNPJ: data.clientCNPJ,
-        clientName: data.clientName,
-        salesRepId: 'current-user-id', // TODO: Get from auth context
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!user?.id) {
+      toast.error('Usuário não autenticado');
+      return;
+    }
+
+    try {
+      const data: CreateProposalData = {
+        title: formData.title,
+        description: formData.description,
+        clientId: formData.clientId,
+        salesRepId: user.id,
+        totalValue: parseFloat(formData.totalValue),
+        validUntil: formData.validUntil,
         details: {
-          estimatedValue: parseFloat(data.estimatedValue),
-          periodStart: new Date(data.periodStart),
-          periodEnd: new Date(data.periodEnd),
-          serviceDescription: data.serviceDescription,
-          additionalNotes: data.additionalNotes,
+          estimatedValue: parseFloat(formData.details.estimatedValue),
+          description: formData.details.description,
+          periodStart: formData.details.periodStart,
+          periodEnd: formData.details.periodEnd,
+          additionalNotes: formData.details.additionalNotes
         },
-      }),
-    onSuccess: () => {
-      toast({
-        title: 'Proposta criada com sucesso!',
-        description: 'Você será redirecionado para a lista de propostas.',
-      });
-      navigate('/proposals');
-    },
-    onError: (error) => {
-      toast({
-        title: 'Erro ao criar proposta',
-        description: error.message,
-        variant: 'destructive',
-      });
-    },
-  });
+        client: clients.find(client => client.id === formData.clientId) || {
+          id: '',
+          razao_social: '',
+          cnpj: ''
+        }
+      };
 
-  const onSubmit = (data: ProposalFormData) => {
-    createProposalMutation.mutate(data);
+      await createProposal(data);
+      router.push('/proposals');
+    } catch (error) {
+      toast.error('Erro ao criar proposta');
+    }
   };
 
   return (
-    <div className="container mx-auto py-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Nova Proposta Comercial</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="clientName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome do Cliente</FormLabel>
-                      <FormControl>
-                        <Input {...field} disabled={!!activeClient} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+    <div className="container mx-auto py-8">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Nova Proposta</h1>
+        <Button onClick={() => router.push('/proposals')}>
+          Voltar para lista
+        </Button>
+      </div>
 
-                <FormField
-                  control={form.control}
-                  name="clientCNPJ"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>CNPJ</FormLabel>
-                      <FormControl>
-                        <Input {...field} disabled={!!activeClient} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+      <form onSubmit={handleSubmit}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold mb-4">Informações Básicas</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Título</label>
+                <Input
+                  required
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="estimatedValue"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Valor Estimado (R$)</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="number" step="0.01" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <div>
+                <label className="block text-sm font-medium mb-1">Cliente</label>
+                <Select
+                  required
+                  value={formData.clientId}
+                  onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
+                >
+                  <option value="">Selecione um cliente</option>
+                  {clients.map((client) => (
+                    <option key={client.id} value={client.id}>
+                      {client.razao_social}
+                    </option>
+                  ))}
+                </Select>
+              </div>
 
-                <FormField
-                  control={form.control}
-                  name="periodStart"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Período Inicial</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="date" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="periodEnd"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Período Final</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="date" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+              <div>
+                <label className="block text-sm font-medium mb-1">Descrição</label>
+                <Textarea
+                  required
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 />
               </div>
 
-              <FormField
-                control={form.control}
-                name="serviceDescription"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Descrição do Serviço</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} rows={4} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div>
+                <label className="block text-sm font-medium mb-1">Valor Total</label>
+                <Input
+                  required
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.totalValue}
+                  onChange={(e) => setFormData({ ...formData, totalValue: e.target.value })}
+                />
+              </div>
 
-              <FormField
-                control={form.control}
-                name="additionalNotes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Observações Adicionais</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} rows={3} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div>
+                <label className="block text-sm font-medium mb-1">Válido até</label>
+                <Input
+                  required
+                  type="date"
+                  value={formData.validUntil}
+                  onChange={(e) => setFormData({ ...formData, validUntil: e.target.value })}
+                />
+              </div>
+            </div>
+          </Card>
 
-              <div className="flex justify-end space-x-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate('/proposals')}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={createProposalMutation.isPending}
-                >
-                  {createProposalMutation.isPending ? 'Criando...' : 'Criar Proposta'}
-                </Button>
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold mb-4">Detalhes do Serviço</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Valor Estimado</label>
+                <Input
+                  required
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.details.estimatedValue}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    details: { ...formData.details, estimatedValue: e.target.value }
+                  })}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Descrição do Serviço</label>
+                <Textarea
+                  required
+                  value={formData.details.description}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    details: { ...formData.details, description: e.target.value }
+                  })}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Data Início</label>
+                <Input
+                  required
+                  type="date"
+                  value={formData.details.periodStart}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    details: { ...formData.details, periodStart: e.target.value }
+                  })}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Data Fim</label>
+                <Input
+                  required
+                  type="date"
+                  value={formData.details.periodEnd}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    details: { ...formData.details, periodEnd: e.target.value }
+                  })}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Observações Adicionais</label>
+                <Textarea
+                  value={formData.details.additionalNotes}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    details: { ...formData.details, additionalNotes: e.target.value }
+                  })}
+                />
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        <div className="mt-8 flex justify-end">
+          <Button type="submit">
+            Criar Proposta
+          </Button>
               </div>
             </form>
-          </Form>
-        </CardContent>
-      </Card>
     </div>
   );
 } 

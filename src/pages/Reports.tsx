@@ -10,6 +10,11 @@ import { Loader2, Download, BarChart, LineChart, PieChart } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ReportChart } from '@/components/reports/ReportChart';
+import { saveAs } from 'file-saver';
+import * as XLSX from 'xlsx';
+import { logger } from '@/lib/logger';
+
+type ExportFormat = 'json' | 'csv' | 'xlsx';
 
 export function Reports() {
   const [reportType, setReportType] = useState<string>('');
@@ -48,31 +53,31 @@ export function Reports() {
     }
   };
 
-  const handleExport = async (format: 'json' | 'csv' | 'xlsx') => {
-    if (!data?.items) return;
-
+  const handleExport = async (format: ExportFormat) => {
     try {
-      const blob = await exportReport(format);
-      const fileName = `relatorio-${reportType}-${format(new Date(), 'dd-MM-yyyy')}.${format}`;
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', fileName);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode?.removeChild(link);
+      const data = await fetchReportData();
+      const fileName = `relatorio_${format(new Date(), 'dd-MM-yyyy')}.${format}`;
 
-      toast({
-        title: 'Dados exportados',
-        description: `Os dados foram exportados com sucesso no formato ${format.toUpperCase()}.`,
-        variant: 'default'
-      });
+      switch (format) {
+        case 'json':
+          saveAs(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }), fileName);
+          break;
+        case 'csv':
+          const csvContent = data.map(row => Object.values(row).join(',')).join('\n');
+          saveAs(new Blob([csvContent], { type: 'text/csv;charset=utf-8' }), fileName);
+          break;
+        case 'xlsx':
+          const worksheet = XLSX.utils.json_to_sheet(data);
+          const workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbook, worksheet, 'Relatório');
+          const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+          saveAs(new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), fileName);
+          break;
+      }
+
+      logger.info('Relatório exportado com sucesso', { format, rows: data.length });
     } catch (error) {
-      toast({
-        title: 'Erro',
-        description: 'Ocorreu um erro ao exportar os dados.',
-        variant: 'destructive'
-      });
+      logger.error('Erro ao exportar relatório', { error });
     }
   };
 

@@ -17,6 +17,8 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
+import { ProposalStatus } from '@/types/proposal';
+import { logger } from '@/lib/logger';
 
 const proposalSchema = z.object({
   client_id: z.string().min(1, 'O cliente é obrigatório'),
@@ -140,6 +142,33 @@ export function Proposals() {
         return 'Rejeitada';
       default:
         return status;
+    }
+  };
+
+  const handleExportCSV = () => {
+    try {
+      const csvContent = data?.items.map(proposal => ({
+        ID: proposal.id,
+        Cliente: clientsData?.items?.find(c => c.id === proposal.client_id)?.name || proposal.client_id,
+        CNPJ: clientsData?.items?.find(c => c.id === proposal.client_id)?.cnpj || '',
+        Valor: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proposal.value),
+        Status: ProposalStatusLabels[proposal.status],
+        'Data de Criação': format(new Date(proposal.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR }),
+        'Última Atualização': format(new Date(proposal.updated_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(csvContent);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Propostas');
+
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const fileName = `propostas_${format(new Date(), 'dd-MM-yyyy')}.xlsx`;
+      
+      saveAs(new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), fileName);
+
+      logger.info('Arquivo de propostas exportado com sucesso', { format: 'xlsx', rows: data?.items.length });
+    } catch (error) {
+      logger.error('Erro ao exportar arquivo de propostas', { error });
     }
   };
 

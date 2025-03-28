@@ -7,11 +7,7 @@ export function validatePassword(password: string): PasswordValidationResult {
   const errors: string[] = [];
 
   if (password.length < 8) {
-    errors.push('A senha deve ter pelo menos 8 caracteres');
-  }
-
-  if (!/\d/.test(password)) {
-    errors.push('A senha deve conter pelo menos um número');
+    errors.push('A senha deve ter no mínimo 8 caracteres');
   }
 
   if (!/[A-Z]/.test(password)) {
@@ -20,6 +16,10 @@ export function validatePassword(password: string): PasswordValidationResult {
 
   if (!/[a-z]/.test(password)) {
     errors.push('A senha deve conter pelo menos uma letra minúscula');
+  }
+
+  if (!/\d/.test(password)) {
+    errors.push('A senha deve conter pelo menos um número');
   }
 
   if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {

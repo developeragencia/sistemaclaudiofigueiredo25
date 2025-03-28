@@ -1,11 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from "react-router-dom";
 import AnimatedLogo from './AnimatedLogo';
-import { Menu, X, Home, Settings } from 'lucide-react';
+import { Menu, X, Home, Settings, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
 
 const NavBar: React.FC = () => {
   const [scrolled, setScrolled] = useState(false);
@@ -13,6 +13,7 @@ const NavBar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const isSistemasPage = location.pathname === '/sistemas';
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -36,54 +37,26 @@ const NavBar: React.FC = () => {
   };
 
   return (
-    <nav className={cn(
-      "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-      scrolled ? 'bg-background/80 backdrop-blur-md shadow-md py-2' : 'bg-transparent py-4'
-    )}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10">
-        <div className="flex items-center justify-between relative">
-          <Link 
-            to="/" 
-            className="flex items-center"
-            onMouseEnter={handleLogoHover}
-          >
-            <AnimatedLogo 
-              size={scrolled ? "sm" : "md"} 
-              className="transition-all duration-300"
-              hovering={isHovering}
-            />
-          </Link>
-          
-          {/* Desktop Navigation Menu */}
-          <div className="hidden md:flex space-x-3">
-            <NavButton to="/" label="Início" icon={<Home className="h-4 w-4" />} />
-            <NavButton to="/admin" label="Admin" icon={<Settings className="h-4 w-4" />} />
-          </div>
-          
-          <button
-            className="md:hidden p-2 rounded-md hover:bg-primary/10 transition-colors touch-target"
-            onClick={toggleMobileMenu}
-            aria-label="Menu"
-          >
-            {mobileMenuOpen ? (
-              <X className="w-5 h-5" />
-            ) : (
-              <Menu className="w-5 h-5" />
-            )}
-          </button>
-        </div>
+    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b bg-background px-6">
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => document.dispatchEvent(new CustomEvent('toggle-sidebar'))}
+      >
+        <Menu className="h-5 w-5" />
+      </Button>
+
+      <div className="flex items-center gap-4">
+        <span className="text-sm">{user?.email}</span>
+        <Button 
+          variant="ghost" 
+          size="icon"
+          onClick={logout}
+        >
+          <LogOut className="h-5 w-5" />
+        </Button>
       </div>
-      
-      {/* Mobile menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden bg-background/95 backdrop-blur-md shadow-lg animate-in fade-in slide-in-from-top">
-          <div className="px-4 py-3 space-y-2">
-            <MobileNavButton to="/" label="Início" icon={<Home className="h-4 w-4" />} onClick={() => setMobileMenuOpen(false)} />
-            <MobileNavButton to="/admin" label="Admin" icon={<Settings className="h-4 w-4" />} onClick={() => setMobileMenuOpen(false)} />
-          </div>
-        </div>
-      )}
-    </nav>
+    </header>
   );
 };
 

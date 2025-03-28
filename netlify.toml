@@ -1,11 +1,12 @@
 # Configuração para deploy na Netlify (compatível com muitos provedores como Hosting)
 [build]
-  command = "npm install && npm run build"
+  command = "npm ci && npm run build"
   publish = "dist"
 
 [build.environment]
-  NODE_VERSION = "20.11.1"
-  NPM_VERSION = "10.2.4"
+  NODE_VERSION = "18.17.0"
+  NPM_VERSION = "9.6.7"
+  CI = "false"
 
 # Configuração para SPA (Single Page Application)
 [[redirects]]

@@ -1,114 +1,93 @@
-type LogLevel = 'info' | 'warn' | 'error';
-
-interface LogEntry {
-  timestamp: string;
-  level: LogLevel;
-  event: string;
-  details: Record<string, any>;
-  userId?: string;
+interface LoggerConfig {
+  level: 'debug' | 'info' | 'warn' | 'error';
+  prefix?: string;
 }
 
 class Logger {
-  private logs: LogEntry[] = [];
-  private readonly MAX_LOGS = 1000;
+  private config: LoggerConfig;
+  private levels = {
+    debug: 0,
+    info: 1,
+    warn: 2,
+    error: 3
+  };
 
-  constructor() {
-    // Limpar logs antigos periodicamente
-    setInterval(() => this.cleanup(), 24 * 60 * 60 * 1000); // 24 horas
+  constructor(config: LoggerConfig = { level: 'info' }) {
+    this.config = config;
   }
 
-  private cleanup() {
-    if (this.logs.length > this.MAX_LOGS) {
-      this.logs = this.logs.slice(-this.MAX_LOGS);
+  private shouldLog(level: keyof typeof this.levels): boolean {
+    return this.levels[level] >= this.levels[this.config.level];
+  }
+
+  private formatMessage(level: string, message: string, ...args: any[]): string {
+    const timestamp = new Date().toISOString();
+    const prefix = this.config.prefix ? `[${this.config.prefix}]` : '';
+    const formattedMessage = args.length > 0 ? this.interpolate(message, args) : message;
+    return `${timestamp} ${prefix}[${level.toUpperCase()}] ${formattedMessage}`;
+  }
+
+  private interpolate(message: string, args: any[]): string {
+    return message.replace(/%[sdjifoO%]/g, (match) => {
+      if (match === '%%') return '%';
+      const value = args.shift();
+      switch (match) {
+        case '%s': return String(value);
+        case '%d': return Number(value).toString();
+        case '%i': return Math.floor(Number(value)).toString();
+        case '%f': return Number(value).toString();
+        case '%j': return JSON.stringify(value);
+        case '%o':
+        case '%O': return this.inspectObject(value);
+        default: return match;
+      }
+    });
+  }
+
+  private inspectObject(obj: any): string {
+    try {
+      return JSON.stringify(obj, null, 2);
+    } catch (error) {
+      return '[Circular]';
     }
   }
 
-  private createLogEntry(
-    level: LogLevel,
-    event: string,
-    details: Record<string, any>,
-    userId?: string
-  ): LogEntry {
-    return {
-      timestamp: new Date().toISOString(),
-      level,
-      event,
-      details,
-      userId,
-    };
-  }
-
-  info(event: string, details: Record<string, any> = {}, userId?: string) {
-    const entry = this.createLogEntry('info', event, details, userId);
-    this.logs.push(entry);
-    this.persist(entry);
-  }
-
-  warn(event: string, details: Record<string, any> = {}, userId?: string) {
-    const entry = this.createLogEntry('warn', event, details, userId);
-    this.logs.push(entry);
-    this.persist(entry);
-  }
-
-  error(event: string, details: Record<string, any> = {}, userId?: string) {
-    const entry = this.createLogEntry('error', event, details, userId);
-    this.logs.push(entry);
-    this.persist(entry);
-  }
-
-  private persist(entry: LogEntry) {
-    // Em desenvolvimento, exibir no console
-    if (import.meta.env.DEV) {
-      const { level, event, details, userId } = entry;
-      console[level](
-        `[${event}]${userId ? ` [User: ${userId}]` : ''}:`,
-        details
-      );
-    }
-
-    // Em produção, enviar para um serviço de logging
-    if (import.meta.env.PROD) {
-      // TODO: Implementar integração com serviço de logging
-      // Por exemplo: Sentry, LogRocket, etc.
+  debug(message: string, ...args: any[]): void {
+    if (this.shouldLog('debug')) {
+      console.debug(this.formatMessage('debug', message, ...args));
     }
   }
 
-  getLogs(
-    options: {
-      level?: LogLevel;
-      userId?: string;
-      startDate?: Date;
-      endDate?: Date;
-    } = {}
-  ): LogEntry[] {
-    let filtered = this.logs;
-
-    if (options.level) {
-      filtered = filtered.filter(log => log.level === options.level);
+  info(message: string, ...args: any[]): void {
+    if (this.shouldLog('info')) {
+      console.info(this.formatMessage('info', message, ...args));
     }
-
-    if (options.userId) {
-      filtered = filtered.filter(log => log.userId === options.userId);
-    }
-
-    if (options.startDate) {
-      filtered = filtered.filter(
-        log => new Date(log.timestamp) >= options.startDate!
-      );
-    }
-
-    if (options.endDate) {
-      filtered = filtered.filter(
-        log => new Date(log.timestamp) <= options.endDate!
-      );
-    }
-
-    return filtered;
   }
 
-  clearLogs() {
-    this.logs = [];
+  warn(message: string, ...args: any[]): void {
+    if (this.shouldLog('warn')) {
+      console.warn(this.formatMessage('warn', message, ...args));
+    }
+  }
+
+  error(message: string | Error, ...args: any[]): void {
+    if (this.shouldLog('error')) {
+      const errorMessage = message instanceof Error ? message.stack || message.message : message;
+      console.error(this.formatMessage('error', errorMessage, ...args));
+    }
+  }
+
+  setLevel(level: LoggerConfig['level']): void {
+    this.config.level = level;
+  }
+
+  setPrefix(prefix: string): void {
+    this.config.prefix = prefix;
   }
 }
 
-export const logger = new Logger(); 
+// Exporta uma instância única para uso em toda a aplicação
+export const logger = new Logger({
+  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+  prefix: 'SecureBridge'
+}); 

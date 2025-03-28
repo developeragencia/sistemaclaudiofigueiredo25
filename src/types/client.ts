@@ -1,48 +1,91 @@
-export type ClientStatus = 'ACTIVE' | 'INACTIVE' | 'PROSPECT' | 'ARCHIVED';
+export type ClientStatus = 'ACTIVE' | 'INACTIVE' | 'BLOCKED';
 export type ClientType = 'public' | 'private';
+
+export interface Address {
+  street: string;
+  number: string;
+  complement?: string;
+  district: string;
+  city: string;
+  state: string;
+  zipCode: string;
+}
+
+export interface Contact {
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+}
 
 export interface Client {
   id: string;
-  name: string;
+  razao_social: string;
+  nome_fantasia?: string;
   cnpj: string;
-  documentNumber?: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string; // Added zipCode property
-  contactName: string;
-  contactEmail?: string;
-  contactPhone?: string;
-  segment?: string;
-  industry?: string;
-  type: ClientType;
+  inscricao_estadual?: string;
+  inscricao_municipal?: string;
+  address: Address;
+  contacts: Contact[];
   status: ClientStatus;
   createdAt: string;
-  updatedAt?: string;
-  representativeId?: string;
-  representativeName?: string;
+  updatedAt: string;
 }
 
-export type CreateClientData = Omit<Client, 'id' | 'createdAt' | 'updatedAt' | 'status'>
+export interface CreateClientData {
+  razao_social: string;
+  nome_fantasia?: string;
+  cnpj: string;
+  inscricao_estadual?: string;
+  inscricao_municipal?: string;
+  address: Address;
+  contacts: Contact[];
+}
 
-export type UpdateClientData = Partial<CreateClientData>
+export interface UpdateClientData {
+  razao_social?: string;
+  nome_fantasia?: string;
+  inscricao_estadual?: string;
+  inscricao_municipal?: string;
+  address?: Address;
+  contacts?: Contact[];
+  status?: ClientStatus;
+}
 
 export interface ClientFilters {
-  search?: string
-  status?: 'active' | 'inactive'
-  page?: number
-  limit?: number
-  created_at?: {
-    gte?: string;
-    lte?: string;
-  };
+  status?: ClientStatus;
+  search?: string;
+  page?: number;
+  limit?: number;
 }
 
 export interface ClientResponse {
-  clients: Client[]
-  total: number
-  page: number
-  limit: number
+  clients: Client[];
+  total: number;
+  page: number;
+  limit: number;
 }
+
+export interface UseClientsReturn {
+  clients: Client[];
+  total: number;
+  isLoading: boolean;
+  error: Error | null;
+  createClient: (data: CreateClientData) => Promise<void>;
+  updateClient: (id: string, data: UpdateClientData) => Promise<void>;
+  deleteClient: (id: string) => Promise<void>;
+}
+
+export interface UseClientReturn {
+  client: Client | null;
+  isLoading: boolean;
+  error: Error | null;
+  updateClient: (data: UpdateClientData) => Promise<void>;
+  deleteClient: () => Promise<void>;
+}
+
+export const CLIENT_STATUS_LABELS: Record<ClientStatus, string> = {
+  ACTIVE: 'Ativo',
+  INACTIVE: 'Inativo',
+  BLOCKED: 'Bloqueado'
+};

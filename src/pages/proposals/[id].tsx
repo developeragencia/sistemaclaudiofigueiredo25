@@ -1,10 +1,10 @@
-import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/router';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { fetchProposals, updateProposalStatus } from '@/services/proposalService';
 import { Proposal } from '@/types/proposal';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -21,223 +21,156 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Timeline, TimelineItem } from '@/components/ui/timeline';
+import { useProposal } from '@/hooks/useProposal';
+import { ProposalStatus, PROPOSAL_STATUS_LABELS, PROPOSAL_STATUS_COLORS } from '@/types/proposal';
+import { logger } from '@/lib/logger';
+import { z } from 'zod';
+import { Separator } from '@/components/ui/separator';
+import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { Spinner } from '@/components/ui/spinner';
+import { formatCurrency } from '@/lib/format';
 
-export function ProposalDetails() {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const { toast } = useToast();
+const proposalSchema = z.object({
+  details: z.object({
+    estimatedValue: z.number().min(0, 'O valor estimado deve ser maior que zero'),
+    description: z.string().min(10, 'A descrição deve ter no mínimo 10 caracteres')
+  }),
+  status: z.enum(['DRAFT', 'ANALYSIS', 'APPROVED', 'REJECTED', 'CONVERTED'] as const)
+});
 
-  const { data: proposal, isLoading } = useQuery<Proposal>({
-    queryKey: ['proposal', id],
-    queryFn: async () => {
-      const proposals = await fetchProposals();
-      const proposal = proposals.find(p => p.id === id);
-      if (!proposal) throw new Error('Proposta não encontrada');
-      return proposal;
-    },
-  });
+export default function ProposalDetails() {
+  const router = useRouter();
+  const { id } = router.query;
+  
+  const {
+    proposal,
+    isLoading,
+    error,
+    updateStatus
+  } = useProposal(id as string);
 
-  const updateStatusMutation = useMutation({
-    mutationFn: ({ status, userId }: { status: Proposal['status']; userId: string }) =>
-      updateProposalStatus(id!, status, userId),
-    onSuccess: () => {
-      toast({
-        title: 'Status atualizado com sucesso!',
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Erro ao atualizar status',
-        description: error.message,
-        variant: 'destructive',
-      });
-    },
-  });
+  useEffect(() => {
+    if (error) {
+      toast.error('Erro ao carregar proposta');
+      router.push('/proposals');
+    }
+  }, [error, router]);
 
-  if (isLoading || !proposal) {
-    return <div>Carregando proposta...</div>;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Spinner size="lg" />
+      </div>
+    );
   }
 
-  const handleStatusUpdate = (newStatus: Proposal['status']) => {
-    updateStatusMutation.mutate({
-      status: newStatus,
-      userId: 'current-user-id', // TODO: Get from auth context
-    });
+  if (!proposal) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <h1 className="text-2xl font-bold mb-4">Proposta não encontrada</h1>
+        <Button onClick={() => router.push('/proposals')}>
+          Voltar para lista
+        </Button>
+      </div>
+    );
+  }
+
+  const handleStatusUpdate = async (status: ProposalStatus, comments?: string) => {
+    try {
+      await updateStatus(status, comments);
+      toast.success('Status atualizado com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao atualizar status');
+    }
   };
 
   return (
-    <div className="container mx-auto py-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Detalhes da Proposta</h1>
-        <Button variant="outline" onClick={() => navigate('/proposals')}>
-          Voltar
+    <div className="container mx-auto py-8">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">{proposal.title}</h1>
+        <Button onClick={() => router.push('/proposals')}>
+          Voltar para lista
         </Button>
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
-        <div className="col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Informações da Proposta</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h3 className="font-medium">Cliente</h3>
-                  <p>{proposal.clientName}</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold mb-4">Informações do Cliente</h2>
+          <div className="space-y-2">
+            <p><strong>Razão Social:</strong> {proposal.client.razao_social}</p>
+            <p><strong>CNPJ:</strong> {proposal.client.cnpj}</p>
+            <p><strong>Email:</strong> {proposal.client.email}</p>
+            <p><strong>Telefone:</strong> {proposal.client.phone}</p>
+            <p><strong>Endereço:</strong> {proposal.client.address}</p>
                 </div>
-                <div>
-                  <h3 className="font-medium">CNPJ</h3>
-                  <p>{proposal.clientCNPJ}</p>
+        </Card>
+
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold mb-4">Detalhes da Proposta</h2>
+          <div className="space-y-2">
+            <p><strong>Status:</strong> <Badge>{proposal.status}</Badge></p>
+            <p><strong>Valor Total:</strong> {formatCurrency(proposal.totalValue)}</p>
+            <p><strong>Válido até:</strong> {format(new Date(proposal.validUntil), 'dd/MM/yyyy', { locale: ptBR })}</p>
+            <p><strong>Descrição:</strong> {proposal.description}</p>
                 </div>
-              </div>
+        </Card>
 
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold mb-4">Serviços</h2>
+          <div className="space-y-4">
               <div>
-                <h3 className="font-medium">Status</h3>
-                <Badge className="mt-1">{proposal.status}</Badge>
-              </div>
-
-              <div>
-                <h3 className="font-medium">Valor Estimado</h3>
-                <p>
-                  {new Intl.NumberFormat('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL'
-                  }).format(proposal.details.estimatedValue)}
-                </p>
-              </div>
-
-              <div>
-                <h3 className="font-medium">Período</h3>
-                <p>
-                  {format(new Date(proposal.details.periodStart), "dd/MM/yyyy")} até{' '}
-                  {format(new Date(proposal.details.periodEnd), "dd/MM/yyyy")}
-                </p>
-              </div>
-
-              <div>
-                <h3 className="font-medium">Descrição do Serviço</h3>
-                <p className="whitespace-pre-wrap">{proposal.details.serviceDescription}</p>
-              </div>
-
+              <p><strong>Valor Estimado:</strong> {formatCurrency(proposal.details.estimatedValue)}</p>
+              <p><strong>Descrição:</strong> {proposal.details.description}</p>
+              <p><strong>Período:</strong> {format(new Date(proposal.details.periodStart), 'dd/MM/yyyy', { locale: ptBR })} até {format(new Date(proposal.details.periodEnd), 'dd/MM/yyyy', { locale: ptBR })}</p>
               {proposal.details.additionalNotes && (
-                <div>
-                  <h3 className="font-medium">Observações Adicionais</h3>
-                  <p className="whitespace-pre-wrap">{proposal.details.additionalNotes}</p>
-                </div>
+                <p><strong>Observações:</strong> {proposal.details.additionalNotes}</p>
               )}
-            </CardContent>
+              </div>
+              </div>
+        </Card>
+
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold mb-4">Linha do Tempo</h2>
+          <div className="space-y-4">
+            {proposal.timeline.map((event) => (
+              <div key={event.id} className="border-l-2 border-gray-200 pl-4">
+                <Badge className="mb-2">{event.status}</Badge>
+                <p className="text-sm text-gray-500">
+                  {format(new Date(event.updatedAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                </p>
+                {event.comments && (
+                  <p className="mt-1">{event.comments}</p>
+                )}
+              </div>
+            ))}
+                </div>
           </Card>
         </div>
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Ações</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {proposal.status === 'PENDING' && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button className="w-full">Iniciar Análise</Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Iniciar análise da proposta?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Isso indicará que a proposta está em processo de análise.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => handleStatusUpdate('ANALYZING')}>
-                        Confirmar
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
+      <div className="mt-8 flex gap-4">
+        {proposal.status === 'DRAFT' && (
+          <Button onClick={() => handleStatusUpdate('PENDING')}>
+            Enviar para análise
+          </Button>
+        )}
 
-              {proposal.status === 'ANALYZING' && (
-                <>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button className="w-full" variant="default">
-                        Aprovar Proposta
+        {proposal.status === 'PENDING' && (
+          <>
+            <Button onClick={() => handleStatusUpdate('APPROVED')}>
+              Aprovar
                       </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Aprovar proposta?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          A proposta será marcada como aprovada e poderá ser convertida em contrato.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleStatusUpdate('APPROVED')}>
-                          Confirmar
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button className="w-full" variant="destructive">
-                        Rejeitar Proposta
+            <Button variant="destructive" onClick={() => handleStatusUpdate('REJECTED')}>
+              Rejeitar
                       </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Rejeitar proposta?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          A proposta será marcada como rejeitada e não poderá ser convertida em contrato.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleStatusUpdate('REJECTED')}>
-                          Confirmar
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
                 </>
               )}
 
-              {proposal.status === 'APPROVED' && (
-                <Button
-                  className="w-full"
-                  onClick={() => navigate(`/contracts/new?proposalId=${proposal.id}`)}
-                >
-                  Converter em Contrato
+        {proposal.status !== 'CANCELLED' && (
+          <Button variant="destructive" onClick={() => handleStatusUpdate('CANCELLED')}>
+            Cancelar
                 </Button>
               )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Timeline</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Timeline>
-                {proposal.timeline.map((event) => (
-                  <TimelineItem
-                    key={event.id}
-                    title={event.description}
-                    timestamp={format(
-                      new Date(event.createdAt),
-                      "dd 'de' MMMM 'de' yyyy 'às' HH:mm",
-                      { locale: ptBR }
-                    )}
-                  />
-                ))}
-              </Timeline>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </div>
   );

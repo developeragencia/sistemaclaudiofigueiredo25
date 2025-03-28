@@ -1,30 +1,30 @@
 import api from '@/lib/api';
-import { Proposal, ProposalFilters, ProposalStatus } from '@/types/proposal';
+import { Proposal, ProposalFilters, ProposalStatus, ProposalResponse } from '@/types/proposal';
 import { supabase } from '@/lib/supabase';
 import { ProposalEvent, Contract } from '@/types/proposal';
 
-interface CreateProposalData {
-  title: string;
+export interface CreateProposalData {
   clientId: string;
-  description: string;
-  services: {
-    name: string;
+  clientName: string;
+  clientCNPJ: string;
+  salesRepId: string;
+  details: {
+    estimatedValue: number;
     description: string;
-    value: number;
-    recurrence: 'one_time' | 'monthly' | 'yearly';
-  }[];
-  validUntil: string;
-  attachments?: File[];
+    periodStart?: Date;
+    periodEnd?: Date;
+    additionalNotes?: string;
+  };
 }
 
-interface UpdateProposalData extends Partial<CreateProposalData> {
-  id: string;
-}
-
-interface UpdateProposalStatusData {
-  id: string;
-  status: ProposalStatus;
-  comment?: string;
+export interface UpdateProposalData {
+  details?: {
+    estimatedValue: number;
+    description: string;
+    periodStart?: Date;
+    periodEnd?: Date;
+    additionalNotes?: string;
+  };
 }
 
 interface GetProposalsParams extends ProposalFilters {
@@ -39,7 +39,7 @@ interface ProposalsResponse {
   totalPages: number;
 }
 
-export const proposalService = {
+class ProposalService {
   async getProposals(params?: GetProposalsParams): Promise<ProposalsResponse> {
     try {
       const { data } = await api.get<ProposalsResponse>('/proposals', { params });
@@ -48,96 +48,80 @@ export const proposalService = {
       console.error('Erro ao buscar propostas:', error);
       throw error;
     }
-  },
+  }
 
-  async getProposalById(id: string): Promise<Proposal> {
-    try {
-      const { data } = await api.get<Proposal>(`/proposals/${id}`);
-      return data;
-    } catch (error) {
-      console.error('Erro ao buscar proposta:', error);
-      throw error;
-    }
-  },
+  async getProposal(id: string): Promise<Proposal> {
+    const { data: proposal, error } = await supabase
+      .from('proposals')
+      .select(`
+        *,
+        timeline:proposal_timeline(*)
+      `)
+      .eq('id', id)
+      .single();
+
+    if (error) throw new Error(error.message);
+    return this.mapProposalFromDB(proposal);
+  }
 
   async createProposal(data: CreateProposalData): Promise<Proposal> {
-    try {
-      const formData = new FormData();
-      
-      // Adiciona os dados básicos
-      formData.append('data', JSON.stringify({
-        title: data.title,
-        clientId: data.clientId,
-        description: data.description,
-        services: data.services,
-        validUntil: data.validUntil,
-      }));
+    const { data: proposal, error } = await supabase
+      .from('proposals')
+      .insert({
+        client_id: data.clientId,
+        client_name: data.clientName,
+        client_cnpj: data.clientCNPJ,
+        sales_rep_id: data.salesRepId,
+        details: data.details,
+        status: 'DRAFT' as ProposalStatus,
+      })
+      .select()
+      .single();
 
-      // Adiciona os anexos
-      if (data.attachments) {
-        data.attachments.forEach(file => {
-          formData.append('attachments', file);
-        });
-      }
+    if (error) throw new Error(error.message);
+    return this.mapProposalFromDB(proposal);
+  }
 
-      const { data: response } = await api.post<Proposal>('/proposals', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+  async updateProposal(id: string, data: UpdateProposalData): Promise<Proposal> {
+    const { data: proposal, error } = await supabase
+      .from('proposals')
+      .update({
+        details: data.details,
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return this.mapProposalFromDB(proposal);
+  }
+
+  async updateStatus(
+    id: string,
+    status: ProposalStatus,
+    userId: string,
+    comments?: string
+  ): Promise<Proposal> {
+    const { data: proposal, error } = await supabase
+      .from('proposals')
+      .update({ status })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+
+    await supabase
+      .from('proposal_timeline')
+      .insert({
+        proposal_id: id,
+        status,
+        updated_by: userId,
+        comments
       });
 
-      return response;
-    } catch (error) {
-      console.error('Erro ao criar proposta:', error);
-      throw error;
-    }
-  },
-
-  async updateProposal(data: UpdateProposalData): Promise<Proposal> {
-    try {
-      const formData = new FormData();
-      
-      // Adiciona os dados básicos
-      formData.append('data', JSON.stringify({
-        title: data.title,
-        description: data.description,
-        services: data.services,
-        validUntil: data.validUntil,
-      }));
-
-      // Adiciona os anexos
-      if (data.attachments) {
-        data.attachments.forEach(file => {
-          formData.append('attachments', file);
-        });
-      }
-
-      const { data: response } = await api.put<Proposal>(`/proposals/${data.id}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      return response;
-    } catch (error) {
-      console.error('Erro ao atualizar proposta:', error);
-      throw error;
-    }
-  },
-
-  async updateProposalStatus(data: UpdateProposalStatusData): Promise<Proposal> {
-    try {
-      const { data: response } = await api.patch<Proposal>(`/proposals/${data.id}/status`, {
-        status: data.status,
-        comment: data.comment,
-      });
-
-      return response;
-    } catch (error) {
-      console.error('Erro ao atualizar status da proposta:', error);
-      throw error;
-    }
-  },
+    return this.getProposal(id);
+  }
 
   async deleteProposal(id: string): Promise<void> {
     try {
@@ -146,7 +130,7 @@ export const proposalService = {
       console.error('Erro ao excluir proposta:', error);
       throw error;
     }
-  },
+  }
 
   async convertToContract(id: string): Promise<Proposal> {
     try {
@@ -156,7 +140,7 @@ export const proposalService = {
       console.error('Erro ao converter proposta em contrato:', error);
       throw error;
     }
-  },
+  }
 
   async downloadAttachment(proposalId: string, attachmentId: string): Promise<Blob> {
     try {
@@ -169,8 +153,79 @@ export const proposalService = {
       console.error('Erro ao baixar anexo:', error);
       throw error;
     }
-  },
-};
+  }
+
+  async listProposals(filters: ProposalFilters = {}): Promise<ProposalResponse> {
+    let query = supabase
+      .from('proposals')
+      .select(`
+        *,
+        timeline:proposal_timeline(*),
+        count:count()
+      `, { count: 'exact' });
+
+    if (filters.clientId) {
+      query = query.eq('client_id', filters.clientId);
+    }
+
+    if (filters.salesRepId) {
+      query = query.eq('sales_rep_id', filters.salesRepId);
+    }
+
+    if (filters.status) {
+      query = query.eq('status', filters.status);
+    }
+
+    if (filters.startDate) {
+      query = query.gte('created_at', filters.startDate.toISOString());
+    }
+
+    if (filters.endDate) {
+      query = query.lte('created_at', filters.endDate.toISOString());
+    }
+
+    if (filters.search) {
+      query = query.or(`
+        client_name.ilike.%${filters.search}%,
+        client_cnpj.ilike.%${filters.search}%,
+        details->>'description'.ilike.%${filters.search}%
+      `);
+    }
+
+    const { data, error, count } = await query;
+
+    if (error) throw new Error(error.message);
+
+    return {
+      data: data.map(this.mapProposalFromDB),
+      total: count || 0
+    };
+  }
+
+  private mapProposalFromDB(data: any): Proposal {
+    return {
+      id: data.id,
+      clientId: data.client_id,
+      clientName: data.client_name,
+      clientCNPJ: data.client_cnpj,
+      salesRepId: data.sales_rep_id,
+      details: data.details,
+      status: data.status,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+      timeline: data.timeline?.map((item: any) => ({
+        id: item.id,
+        proposalId: item.proposal_id,
+        status: item.status,
+        updatedBy: item.updated_by,
+        updatedAt: new Date(item.updated_at),
+        comments: item.comments
+      })) || []
+    };
+  }
+}
+
+export const proposalService = new ProposalService();
 
 export async function fetchProposals(filters?: {
   status?: string[];
