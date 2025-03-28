@@ -21,7 +21,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Timeline, TimelineItem } from '@/components/ui/timeline';
-import { useProposal } from '@/hooks/useProposal';
+import { useProposal, useProposals } from '@/hooks/useProposals';
 import { ProposalStatus, PROPOSAL_STATUS_LABELS, PROPOSAL_STATUS_COLORS } from '@/types/proposal';
 import { logger } from '@/lib/logger';
 import { z } from 'zod';
@@ -30,6 +30,10 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Spinner } from '@/components/ui/spinner';
 import { formatCurrency } from '@/lib/format';
+import { ProposalForm } from '@/components/proposals/ProposalForm';
+import type { UpdateProposalData } from '@/types/proposal';
+import { ProposalTimeline } from '@/components/proposals/ProposalTimeline';
+import { ProposalActions } from '@/components/proposals/ProposalActions';
 
 const proposalSchema = z.object({
   details: z.object({
@@ -42,20 +46,13 @@ const proposalSchema = z.object({
 export default function ProposalDetails() {
   const router = useRouter();
   const { id } = router.query;
-  
-  const {
-    proposal,
-    isLoading,
-    error,
-    updateStatus
-  } = useProposal(id as string);
+  const { data: proposal, isLoading } = useProposal(id as string);
+  const { updateProposal } = useProposals();
 
-  useEffect(() => {
-    if (error) {
-      toast.error('Erro ao carregar proposta');
-      router.push('/proposals');
-    }
-  }, [error, router]);
+  const handleSubmit = async (data: UpdateProposalData) => {
+    await updateProposal(id as string, data);
+    router.push('/proposals');
+  };
 
   if (isLoading) {
     return (
@@ -67,110 +64,84 @@ export default function ProposalDetails() {
 
   if (!proposal) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <h1 className="text-2xl font-bold mb-4">Proposta não encontrada</h1>
-        <Button onClick={() => router.push('/proposals')}>
-          Voltar para lista
-        </Button>
+      <div className="container mx-auto py-8">
+        <Card>
+          <CardContent className="p-8 text-center">
+            <p className="text-lg text-gray-500">Proposta não encontrada</p>
+            <Button
+              onClick={() => router.push('/proposals')}
+              className="mt-4"
+            >
+              Voltar para lista
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
-  const handleStatusUpdate = async (status: ProposalStatus, comments?: string) => {
-    try {
-      await updateStatus(status, comments);
-      toast.success('Status atualizado com sucesso!');
-    } catch (error) {
-      toast.error('Erro ao atualizar status');
-    }
-  };
-
   return (
     <div className="container mx-auto py-8">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">{proposal.title}</h1>
+        <div>
+          <h1 className="text-3xl font-bold">{proposal.title}</h1>
+          <div className="flex items-center gap-2 mt-2">
+            <Badge
+              variant="outline"
+              className={PROPOSAL_STATUS_COLORS[proposal.status]}
+            >
+              {PROPOSAL_STATUS_LABELS[proposal.status]}
+            </Badge>
+            <span className="text-sm text-gray-500">
+              Criada em {format(new Date(proposal.createdAt), 'dd/MM/yyyy', { locale: ptBR })}
+            </span>
+          </div>
+        </div>
         <Button onClick={() => router.push('/proposals')}>
           Voltar para lista
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4">Informações do Cliente</h2>
-          <div className="space-y-2">
-            <p><strong>Razão Social:</strong> {proposal.client.razao_social}</p>
-            <p><strong>CNPJ:</strong> {proposal.client.cnpj}</p>
-            <p><strong>Email:</strong> {proposal.client.email}</p>
-            <p><strong>Telefone:</strong> {proposal.client.phone}</p>
-            <p><strong>Endereço:</strong> {proposal.client.address}</p>
-                </div>
-        </Card>
-
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4">Detalhes da Proposta</h2>
-          <div className="space-y-2">
-            <p><strong>Status:</strong> <Badge>{proposal.status}</Badge></p>
-            <p><strong>Valor Total:</strong> {formatCurrency(proposal.totalValue)}</p>
-            <p><strong>Válido até:</strong> {format(new Date(proposal.validUntil), 'dd/MM/yyyy', { locale: ptBR })}</p>
-            <p><strong>Descrição:</strong> {proposal.description}</p>
-                </div>
-        </Card>
-
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4">Serviços</h2>
-          <div className="space-y-4">
-              <div>
-              <p><strong>Valor Estimado:</strong> {formatCurrency(proposal.details.estimatedValue)}</p>
-              <p><strong>Descrição:</strong> {proposal.details.description}</p>
-              <p><strong>Período:</strong> {format(new Date(proposal.details.periodStart), 'dd/MM/yyyy', { locale: ptBR })} até {format(new Date(proposal.details.periodEnd), 'dd/MM/yyyy', { locale: ptBR })}</p>
-              {proposal.details.additionalNotes && (
-                <p><strong>Observações:</strong> {proposal.details.additionalNotes}</p>
-              )}
-              </div>
-              </div>
-        </Card>
-
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4">Linha do Tempo</h2>
-          <div className="space-y-4">
-            {proposal.timeline.map((event) => (
-              <div key={event.id} className="border-l-2 border-gray-200 pl-4">
-                <Badge className="mb-2">{event.status}</Badge>
-                <p className="text-sm text-gray-500">
-                  {format(new Date(event.updatedAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
-                </p>
-                {event.comments && (
-                  <p className="mt-1">{event.comments}</p>
-                )}
-              </div>
-            ))}
-                </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Editar Proposta</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ProposalForm
+                proposal={proposal}
+                onSubmit={handleSubmit}
+                onCancel={() => router.push('/proposals')}
+              />
+            </CardContent>
           </Card>
         </div>
 
-      <div className="mt-8 flex gap-4">
-        {proposal.status === 'DRAFT' && (
-          <Button onClick={() => handleStatusUpdate('PENDING')}>
-            Enviar para análise
-          </Button>
-        )}
+        <div className="space-y-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Informações do Cliente</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Nome</p>
+                <p>{proposal.client.name}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">CNPJ</p>
+                <p>{proposal.client.cnpj}</p>
+              </div>
+            </CardContent>
+          </Card>
 
-        {proposal.status === 'PENDING' && (
-          <>
-            <Button onClick={() => handleStatusUpdate('APPROVED')}>
-              Aprovar
-                      </Button>
-            <Button variant="destructive" onClick={() => handleStatusUpdate('REJECTED')}>
-              Rejeitar
-                      </Button>
-                </>
-              )}
+          <ProposalActions
+            proposalId={proposal.id}
+            status={proposal.status}
+          />
 
-        {proposal.status !== 'CANCELLED' && (
-          <Button variant="destructive" onClick={() => handleStatusUpdate('CANCELLED')}>
-            Cancelar
-                </Button>
-              )}
+          <ProposalTimeline timeline={proposal.timeline} />
+        </div>
       </div>
     </div>
   );

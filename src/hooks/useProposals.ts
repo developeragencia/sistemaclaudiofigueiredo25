@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { proposalService } from '@/services/proposalService';
 import { logger } from '@/lib/logger';
 import { toast } from 'sonner';
 import type {
@@ -24,88 +24,14 @@ export function useProposals(filters: ProposalFilters = {}): UseProposalsReturn 
     error
   } = useQuery({
     queryKey: ['proposals', filters],
-    queryFn: async () => {
-      try {
-        let query = supabase.from('proposals').select('*');
-
-        if (filters.clientId) {
-          query = query.eq('client_id', filters.clientId);
-        }
-
-        if (filters.salesRepId) {
-          query = query.eq('sales_rep_id', filters.salesRepId);
-        }
-
-        if (filters.status) {
-          query = query.eq('status', filters.status);
-        }
-
-        if (filters.search) {
-          query = query.or(`title.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
-        }
-
-        if (filters.startDate) {
-          query = query.gte('created_at', filters.startDate);
-        }
-
-        if (filters.endDate) {
-          query = query.lte('created_at', filters.endDate);
-        }
-
-        if (filters.page && filters.limit) {
-          const from = (filters.page - 1) * filters.limit;
-          const to = from + filters.limit - 1;
-          query = query.range(from, to);
-        }
-
-        const { data, error: queryError, count } = await query;
-
-        if (queryError) {
-          throw queryError;
-        }
-
-  return {
-          proposals: data || [],
-          total: count || 0,
-          page: filters.page || 1,
-          limit: filters.limit || 10
-        };
-      } catch (error) {
-        console.error('Error fetching proposals:', error);
-        throw error;
-      }
-    }
+    queryFn: () => proposalService.listProposals(filters)
   });
 
   const createProposalMutation = useMutation({
-    mutationFn: async (data: CreateProposalData) => {
-      const { error } = await supabase.from('proposals').insert({
-        title: data.title,
-        description: data.description,
-        client_id: data.clientId,
-        sales_rep_id: data.salesRepId,
-        total_value: data.totalValue,
-        valid_until: data.validUntil,
-        status: 'DRAFT',
-        details: data.details,
-        timeline: [{
-          id: crypto.randomUUID(),
-          status: 'DRAFT',
-          updatedAt: new Date().toISOString(),
-          updatedBy: data.salesRepId
-        }],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      toast.success('Proposta criada com sucesso!');
-    },
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['proposals'] });
+    mutationFn: (data: CreateProposalData) => proposalService.createProposal(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['proposals'] });
+      toast.success('Proposta criada com sucesso');
     },
     onError: (error) => {
       console.error('Error creating proposal:', error);
@@ -114,44 +40,11 @@ export function useProposals(filters: ProposalFilters = {}): UseProposalsReturn 
   });
 
   const updateProposalMutation = useMutation({
-    mutationFn: async ({ id, updateData }: { id: string; updateData: UpdateProposalData }) => {
-      const dataToUpdate: Record<string, any> = {
-        updated_at: new Date().toISOString()
-      };
-
-      if (updateData.title) {
-        dataToUpdate.title = updateData.title;
-      }
-
-      if (updateData.description) {
-        dataToUpdate.description = updateData.description;
-      }
-
-      if (updateData.totalValue) {
-        dataToUpdate.total_value = updateData.totalValue;
-      }
-
-      if (updateData.validUntil) {
-        dataToUpdate.valid_until = updateData.validUntil;
-      }
-
-      if (updateData.details) {
-        dataToUpdate.details = updateData.details;
-      }
-
-      const { error } = await supabase
-        .from('proposals')
-        .update(dataToUpdate)
-        .eq('id', id);
-
-      if (error) {
-        throw error;
-      }
-
-      toast.success('Proposta atualizada com sucesso!');
-    },
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['proposals'] });
+    mutationFn: ({ id, data }: { id: string; data: UpdateProposalData }) => 
+      proposalService.updateProposal(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['proposals'] });
+      toast.success('Proposta atualizada com sucesso');
     },
     onError: (error) => {
       console.error('Error updating proposal:', error);
@@ -160,20 +53,10 @@ export function useProposals(filters: ProposalFilters = {}): UseProposalsReturn 
   });
 
   const deleteProposalMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('proposals')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        throw error;
-      }
-
-      toast.success('Proposta excluída com sucesso!');
-    },
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['proposals'] });
+    mutationFn: (id: string) => proposalService.deleteProposal(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['proposals'] });
+      toast.success('Proposta excluída com sucesso');
     },
     onError: (error) => {
       console.error('Error deleting proposal:', error);
@@ -182,42 +65,11 @@ export function useProposals(filters: ProposalFilters = {}): UseProposalsReturn 
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: UpdateProposalStatusData }) => {
-      const proposal = await supabase
-        .from('proposals')
-        .select('timeline')
-        .eq('id', id)
-        .single();
-
-      if (proposal.error) {
-        throw proposal.error;
-      }
-
-      const timeline = [...(proposal.data.timeline || []), {
-        id: crypto.randomUUID(),
-        status: data.status,
-        comments: data.comments,
-        updatedAt: new Date().toISOString(),
-        updatedBy: (await supabase.auth.getUser()).data.user?.id || ''
-      }];
-
-      const { error } = await supabase
-        .from('proposals')
-        .update({
-          status: data.status,
-          timeline,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id);
-
-      if (error) {
-        throw error;
-      }
-
-      toast.success('Status da proposta atualizado com sucesso!');
-    },
+    mutationFn: ({ id, data }: { id: string; data: UpdateProposalStatusData }) =>
+      proposalService.updateStatus(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['proposals'] });
+      toast.success('Status da proposta atualizado com sucesso');
     },
     onError: (error) => {
       console.error('Error updating proposal status:', error);
@@ -232,17 +84,19 @@ export function useProposals(filters: ProposalFilters = {}): UseProposalsReturn 
     total: proposalsData?.total || 0,
     page: proposalsData?.page || 1,
     limit: proposalsData?.limit || 10,
-    createProposal: (data: CreateProposalData) => createProposalMutation.mutateAsync(data),
-    updateProposal: (id: string, data: UpdateProposalData) => updateProposalMutation.mutateAsync({ id, updateData: data }),
-    deleteProposal: (id: string) => deleteProposalMutation.mutateAsync(id),
-    updateStatus: (id: string, data: UpdateProposalStatusData) => updateStatusMutation.mutateAsync({ id, data })
+    createProposal: createProposalMutation.mutateAsync,
+    updateProposal: updateProposalMutation.mutateAsync,
+    deleteProposal: deleteProposalMutation.mutateAsync,
+    updateStatus: updateStatusMutation.mutateAsync
   };
 }
 
 export function useProposal(id: string) {
+  const queryClient = useQueryClient();
+
   return useQuery({
-    queryKey: ['proposals', id],
-    queryFn: () => supabase.from('proposals').select('*').eq('id', id),
+    queryKey: ['proposal', id],
+    queryFn: () => proposalService.getProposal(id),
     enabled: !!id
   });
 }

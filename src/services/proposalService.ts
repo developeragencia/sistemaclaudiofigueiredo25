@@ -1,30 +1,49 @@
 import api from '@/lib/api';
-import { Proposal, ProposalFilters, ProposalStatus, ProposalResponse } from '@/types/proposal';
 import { supabase } from '@/lib/supabase';
-import { ProposalEvent, Contract } from '@/types/proposal';
+import type { 
+  Proposal, 
+  ProposalFilters, 
+  ProposalStatus, 
+  ProposalResponse,
+  ProposalTimeline,
+  ProposalEvent,
+  Contract
+} from '@/types/proposal';
+import { logger } from '@/lib/logger';
 
 export interface CreateProposalData {
-  clientId: string;
-  clientName: string;
-  clientCNPJ: string;
-  salesRepId: string;
+  title: string;
+  description: string;
+  client: {
+    id: string;
+    name: string;
+    cnpj: string;
+  };
+  totalValue: number;
+  validUntil: string;
   details: {
     estimatedValue: number;
     description: string;
-    periodStart?: Date;
-    periodEnd?: Date;
+    periodStart: string;
+    periodEnd: string;
     additionalNotes?: string;
   };
+  salesRepId?: string;
 }
 
 export interface UpdateProposalData {
+  title?: string;
+  description?: string;
+  totalValue?: number;
+  validUntil?: string;
   details?: {
-    estimatedValue: number;
-    description: string;
-    periodStart?: Date;
-    periodEnd?: Date;
+    estimatedValue?: number;
+    description?: string;
+    periodStart?: string;
+    periodEnd?: string;
     additionalNotes?: string;
   };
+  salesRepId?: string;
 }
 
 interface GetProposalsParams extends ProposalFilters {
@@ -51,93 +70,159 @@ class ProposalService {
   }
 
   async getProposal(id: string): Promise<Proposal> {
-    const { data: proposal, error } = await supabase
-      .from('proposals')
-      .select(`
-        *,
-        timeline:proposal_timeline(*)
-      `)
-      .eq('id', id)
-      .single();
-
-    if (error) throw new Error(error.message);
-    return this.mapProposalFromDB(proposal);
-  }
-
-  async createProposal(data: CreateProposalData): Promise<Proposal> {
-    const { data: proposal, error } = await supabase
-      .from('proposals')
-      .insert({
-        client_id: data.clientId,
-        client_name: data.clientName,
-        client_cnpj: data.clientCNPJ,
-        sales_rep_id: data.salesRepId,
-        details: data.details,
-        status: 'DRAFT' as ProposalStatus,
-      })
-      .select()
-      .single();
-
-    if (error) throw new Error(error.message);
-    return this.mapProposalFromDB(proposal);
-  }
-
-  async updateProposal(id: string, data: UpdateProposalData): Promise<Proposal> {
-    const { data: proposal, error } = await supabase
-      .from('proposals')
-      .update({
-        details: data.details,
-      })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw new Error(error.message);
-    return this.mapProposalFromDB(proposal);
-  }
-
-  async updateStatus(
-    id: string,
-    status: ProposalStatus,
-    userId: string,
-    comments?: string
-  ): Promise<Proposal> {
-    const { data: proposal, error } = await supabase
-      .from('proposals')
-      .update({ status })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw new Error(error.message);
-
-    await supabase
-      .from('proposal_timeline')
-      .insert({
-        proposal_id: id,
-        status,
-        updated_by: userId,
-        comments
-      });
-
-    return this.getProposal(id);
-  }
-
-  async deleteProposal(id: string): Promise<void> {
     try {
-      await api.delete(`/proposals/${id}`);
+      const { data, error } = await supabase
+        .from('proposals')
+        .select('*, timeline(*)')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      if (!data) throw new Error('Proposta não encontrada');
+
+      return this.mapProposalFromDB(data);
     } catch (error) {
-      console.error('Erro ao excluir proposta:', error);
+      logger.error('Erro ao buscar proposta:', error);
       throw error;
     }
   }
 
-  async convertToContract(id: string): Promise<Proposal> {
+  async createProposal(data: CreateProposalData): Promise<Proposal> {
     try {
-      const { data } = await api.post<Proposal>(`/proposals/${id}/convert`);
-      return data;
+      const { data: proposal, error } = await supabase
+        .from('proposals')
+        .insert([{
+          title: data.title,
+          description: data.description,
+          client: data.client,
+          total_value: data.totalValue,
+          valid_until: data.validUntil,
+          status: 'DRAFT',
+          details: data.details,
+          sales_rep_id: data.salesRepId,
+          timeline: [{
+            id: crypto.randomUUID(),
+            status: 'DRAFT',
+            updatedAt: new Date().toISOString(),
+            updatedBy: data.salesRepId || 'system',
+            comments: 'Proposta criada'
+          }],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      if (!proposal) throw new Error('Erro ao criar proposta');
+
+      return this.mapProposalFromDB(proposal);
     } catch (error) {
-      console.error('Erro ao converter proposta em contrato:', error);
+      logger.error('Erro ao criar proposta:', error);
+      throw error;
+    }
+  }
+
+  async updateProposal(id: string, data: UpdateProposalData): Promise<Proposal> {
+    try {
+      const updateData: Record<string, any> = {
+        updated_at: new Date().toISOString()
+      };
+
+      if (data.title) updateData.title = data.title;
+      if (data.description) updateData.description = data.description;
+      if (data.totalValue) updateData.total_value = data.totalValue;
+      if (data.validUntil) updateData.valid_until = data.validUntil;
+      if (data.details) updateData.details = { ...data.details };
+
+      const { data: proposal, error } = await supabase
+        .from('proposals')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      if (!proposal) throw new Error('Proposta não encontrada');
+
+      return this.mapProposalFromDB(proposal);
+    } catch (error) {
+      logger.error('Erro ao atualizar proposta:', error);
+      throw error;
+    }
+  }
+
+  async updateStatus(id: string, data: UpdateProposalStatusData): Promise<Proposal> {
+    try {
+      const proposal = await this.getProposal(id);
+      const timeline = [...proposal.timeline, {
+        id: crypto.randomUUID(),
+        status: data.status,
+        comments: data.comments,
+        updatedAt: new Date().toISOString(),
+        updatedBy: (await supabase.auth.getUser()).data.user?.id || 'system'
+      }];
+
+      const { data: updatedProposal, error } = await supabase
+        .from('proposals')
+        .update({
+          status: data.status,
+          timeline,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      if (!updatedProposal) throw new Error('Proposta não encontrada');
+
+      return this.mapProposalFromDB(updatedProposal);
+    } catch (error) {
+      logger.error('Erro ao atualizar status da proposta:', error);
+      throw error;
+    }
+  }
+
+  async deleteProposal(id: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('proposals')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    } catch (error) {
+      logger.error('Erro ao excluir proposta:', error);
+      throw error;
+    }
+  }
+
+  async convertToContract(id: string, contractData: Omit<Contract, 'id' | 'createdAt' | 'updatedAt'>): Promise<Contract> {
+    try {
+      const { data: contract, error: contractError } = await supabase
+        .from('contracts')
+        .insert([{
+          ...contractData,
+          proposal_id: id,
+          status: 'ACTIVE',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }])
+        .select()
+        .single();
+
+      if (contractError) throw contractError;
+      if (!contract) throw new Error('Erro ao criar contrato');
+
+      await this.updateStatus(id, {
+        status: 'CONVERTED',
+        comments: `Convertida em contrato ${contract.id}`
+      });
+
+      return contract;
+    } catch (error) {
+      logger.error('Erro ao converter proposta em contrato:', error);
       throw error;
     }
   }
@@ -155,205 +240,77 @@ class ProposalService {
     }
   }
 
-  async listProposals(filters: ProposalFilters = {}): Promise<ProposalResponse> {
-    let query = supabase
-      .from('proposals')
-      .select(`
-        *,
-        timeline:proposal_timeline(*),
-        count:count()
-      `, { count: 'exact' });
+  async listProposals(params: ProposalFilters = {}): Promise<ProposalResponse> {
+    try {
+      let query = supabase
+        .from('proposals')
+        .select('*, timeline(*)', { count: 'exact' });
 
-    if (filters.clientId) {
-      query = query.eq('client_id', filters.clientId);
+      if (params.status?.length) {
+        query = query.in('status', params.status);
+      }
+      if (params.clientId) {
+        query = query.eq('client_id', params.clientId);
+      }
+      if (params.salesRepId) {
+        query = query.eq('sales_rep_id', params.salesRepId);
+      }
+      if (params.search) {
+        query = query.or(`title.ilike.%${params.search}%,description.ilike.%${params.search}%`);
+      }
+
+      const page = params.page || 1;
+      const limit = params.limit || 10;
+      const start = (page - 1) * limit;
+
+      query = query
+        .range(start, start + limit - 1)
+        .order('created_at', { ascending: false });
+
+      const { data, error, count } = await query;
+
+      if (error) throw error;
+
+      return {
+        proposals: data?.map(this.mapProposalFromDB) || [],
+        total: count || 0,
+        page,
+        limit
+      };
+    } catch (error) {
+      logger.error('Erro ao buscar propostas:', error);
+      throw error;
     }
-
-    if (filters.salesRepId) {
-      query = query.eq('sales_rep_id', filters.salesRepId);
-    }
-
-    if (filters.status) {
-      query = query.eq('status', filters.status);
-    }
-
-    if (filters.startDate) {
-      query = query.gte('created_at', filters.startDate.toISOString());
-    }
-
-    if (filters.endDate) {
-      query = query.lte('created_at', filters.endDate.toISOString());
-    }
-
-    if (filters.search) {
-      query = query.or(`
-        client_name.ilike.%${filters.search}%,
-        client_cnpj.ilike.%${filters.search}%,
-        details->>'description'.ilike.%${filters.search}%
-      `);
-    }
-
-    const { data, error, count } = await query;
-
-    if (error) throw new Error(error.message);
-
-    return {
-      data: data.map(this.mapProposalFromDB),
-      total: count || 0
-    };
   }
 
   private mapProposalFromDB(data: any): Proposal {
     return {
       id: data.id,
-      clientId: data.client_id,
-      clientName: data.client_name,
-      clientCNPJ: data.client_cnpj,
-      salesRepId: data.sales_rep_id,
-      details: data.details,
+      title: data.title,
+      description: data.description,
+      client: data.client,
+      totalValue: data.total_value,
+      validUntil: data.valid_until,
       status: data.status,
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.updated_at),
-      timeline: data.timeline?.map((item: any) => ({
-        id: item.id,
-        proposalId: item.proposal_id,
-        status: item.status,
-        updatedBy: item.updated_by,
-        updatedAt: new Date(item.updated_at),
-        comments: item.comments
-      })) || []
+      details: data.details || {
+        estimatedValue: 0,
+        description: '',
+        periodStart: '',
+        periodEnd: '',
+        additionalNotes: ''
+      },
+      timeline: data.timeline?.map((entry: any) => ({
+        id: entry.id,
+        status: entry.status,
+        comments: entry.comments,
+        updatedAt: entry.updated_at,
+        updatedBy: entry.updated_by
+      })) || [],
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      salesRepId: data.sales_rep_id
     };
   }
 }
 
 export const proposalService = new ProposalService();
-
-export async function fetchProposals(filters?: {
-  status?: string[];
-  clientCNPJ?: string;
-  salesRepId?: string;
-}): Promise<Proposal[]> {
-  let query = supabase
-    .from('proposals')
-    .select('*, timeline(*)');
-
-  if (filters?.status) {
-    query = query.in('status', filters.status);
-  }
-  if (filters?.clientCNPJ) {
-    query = query.eq('clientCNPJ', filters.clientCNPJ);
-  }
-  if (filters?.salesRepId) {
-    query = query.eq('salesRepId', filters.salesRepId);
-  }
-
-  const { data, error } = await query.order('createdAt', { ascending: false });
-
-  if (error) {
-    throw new Error('Erro ao buscar propostas: ' + error.message);
-  }
-
-  return data || [];
-}
-
-export async function createProposal(proposal: Omit<Proposal, 'id' | 'createdAt' | 'updatedAt' | 'timeline'>): Promise<Proposal> {
-  const { data, error } = await supabase
-    .from('proposals')
-    .insert([{
-      ...proposal,
-      status: 'PENDING',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }])
-    .select()
-    .single();
-
-  if (error) {
-    throw new Error('Erro ao criar proposta: ' + error.message);
-  }
-
-  // Criar primeiro evento na timeline
-  await createProposalEvent({
-    proposalId: data.id,
-    type: 'STATUS_CHANGE',
-    description: 'Proposta criada',
-    userId: proposal.salesRepId,
-    metadata: { status: 'PENDING' }
-  });
-
-  return data;
-}
-
-export async function updateProposalStatus(
-  proposalId: string,
-  status: Proposal['status'],
-  userId: string,
-  metadata?: Record<string, any>
-): Promise<void> {
-  const { error } = await supabase
-    .from('proposals')
-    .update({
-      status,
-      updatedAt: new Date().toISOString(),
-      ...(status === 'ANALYZING' ? { analyzedBy: userId, analyzedAt: new Date().toISOString() } : {})
-    })
-    .eq('id', proposalId);
-
-  if (error) {
-    throw new Error('Erro ao atualizar status da proposta: ' + error.message);
-  }
-
-  // Registrar mudança na timeline
-  await createProposalEvent({
-    proposalId,
-    type: 'STATUS_CHANGE',
-    description: `Status alterado para ${status}`,
-    userId,
-    metadata: { status, ...metadata }
-  });
-}
-
-export async function createProposalEvent(event: Omit<ProposalEvent, 'id' | 'createdAt'>): Promise<ProposalEvent> {
-  const { data, error } = await supabase
-    .from('proposal_events')
-    .insert([{
-      ...event,
-      createdAt: new Date().toISOString()
-    }])
-    .select()
-    .single();
-
-  if (error) {
-    throw new Error('Erro ao criar evento na timeline: ' + error.message);
-  }
-
-  return data;
-}
-
-export async function convertProposalToContract(
-  proposalId: string,
-  contractData: Omit<Contract, 'id' | 'createdAt' | 'updatedAt'>
-): Promise<Contract> {
-  // Criar contrato
-  const { data: contract, error: contractError } = await supabase
-    .from('contracts')
-    .insert([{
-      ...contractData,
-      proposalId,
-      status: 'ACTIVE',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }])
-    .select()
-    .single();
-
-  if (contractError) {
-    throw new Error('Erro ao criar contrato: ' + contractError.message);
-  }
-
-  // Atualizar status da proposta
-  await updateProposalStatus(proposalId, 'CONVERTED', contractData.salesRepId, {
-    contractId: contract.id
-  });
-
-  return contract;
-}

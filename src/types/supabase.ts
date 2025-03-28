@@ -48,114 +48,162 @@ export interface Database {
         Row: {
           id: string
           name: string
-          document: string
+          cnpj: string
           email: string
           phone: string
           address: string
-          city: string
-          state: string
-          zip_code: string
           created_at: string
           updated_at: string
-          status: 'active' | 'inactive'
         }
         Insert: {
           id?: string
           name: string
-          document: string
+          cnpj: string
           email: string
           phone: string
           address: string
-          city: string
-          state: string
-          zip_code: string
           created_at?: string
           updated_at?: string
-          status?: 'active' | 'inactive'
         }
         Update: {
           id?: string
           name?: string
-          document?: string
+          cnpj?: string
           email?: string
           phone?: string
           address?: string
-          city?: string
-          state?: string
-          zip_code?: string
           created_at?: string
           updated_at?: string
-          status?: 'active' | 'inactive'
         }
       }
       proposals: {
         Row: {
           id: string
-          client_id: string
-          number: string
-          type: 'PIS' | 'COFINS' | 'ICMS' | 'IPI' | 'OUTROS'
-          status: 'draft' | 'pending' | 'approved' | 'rejected'
-          value: number
+          title: string
           description: string
+          client: {
+            id: string
+            name: string
+            cnpj: string
+          }
+          total_value: number
+          valid_until: string
+          status: 'DRAFT' | 'ANALYSIS' | 'APPROVED' | 'REJECTED' | 'CONVERTED'
+          details: {
+            estimatedValue: number
+            description: string
+            periodStart?: string
+            periodEnd?: string
+            additionalNotes?: string
+            serviceDescription?: string
+          }
+          timeline: {
+            id: string
+            status: 'DRAFT' | 'ANALYSIS' | 'APPROVED' | 'REJECTED' | 'CONVERTED'
+            comments?: string
+            updatedAt: string
+            updatedBy: string
+          }[]
           created_at: string
           updated_at: string
+          sales_rep_id?: string
         }
         Insert: {
           id?: string
-          client_id: string
-          number?: string
-          type: 'PIS' | 'COFINS' | 'ICMS' | 'IPI' | 'OUTROS'
-          status?: 'draft' | 'pending' | 'approved' | 'rejected'
-          value: number
+          title: string
           description: string
+          client: {
+            id: string
+            name: string
+            cnpj: string
+          }
+          total_value: number
+          valid_until: string
+          status: 'DRAFT' | 'ANALYSIS' | 'APPROVED' | 'REJECTED' | 'CONVERTED'
+          details: {
+            estimatedValue: number
+            description: string
+            periodStart?: string
+            periodEnd?: string
+            additionalNotes?: string
+            serviceDescription?: string
+          }
+          timeline: {
+            id: string
+            status: 'DRAFT' | 'ANALYSIS' | 'APPROVED' | 'REJECTED' | 'CONVERTED'
+            comments?: string
+            updatedAt: string
+            updatedBy: string
+          }[]
           created_at?: string
           updated_at?: string
+          sales_rep_id?: string
         }
         Update: {
           id?: string
-          client_id?: string
-          number?: string
-          type?: 'PIS' | 'COFINS' | 'ICMS' | 'IPI' | 'OUTROS'
-          status?: 'draft' | 'pending' | 'approved' | 'rejected'
-          value?: number
+          title?: string
           description?: string
+          client?: {
+            id: string
+            name: string
+            cnpj: string
+          }
+          total_value?: number
+          valid_until?: string
+          status?: 'DRAFT' | 'ANALYSIS' | 'APPROVED' | 'REJECTED' | 'CONVERTED'
+          details?: {
+            estimatedValue: number
+            description: string
+            periodStart?: string
+            periodEnd?: string
+            additionalNotes?: string
+            serviceDescription?: string
+          }
+          timeline?: {
+            id: string
+            status: 'DRAFT' | 'ANALYSIS' | 'APPROVED' | 'REJECTED' | 'CONVERTED'
+            comments?: string
+            updatedAt: string
+            updatedBy: string
+          }[]
           created_at?: string
           updated_at?: string
+          sales_rep_id?: string
         }
       }
       contracts: {
         Row: {
           id: string
           proposal_id: string
-          number: string
-          status: 'active' | 'inactive' | 'completed'
+          status: 'ACTIVE' | 'INACTIVE' | 'CANCELLED'
           start_date: string
-          end_date: string | null
+          end_date: string
           value: number
           created_at: string
           updated_at: string
+          sales_rep_id: string
         }
         Insert: {
           id?: string
           proposal_id: string
-          number?: string
-          status?: 'active' | 'inactive' | 'completed'
+          status: 'ACTIVE' | 'INACTIVE' | 'CANCELLED'
           start_date: string
-          end_date?: string | null
+          end_date: string
           value: number
           created_at?: string
           updated_at?: string
+          sales_rep_id: string
         }
         Update: {
           id?: string
           proposal_id?: string
-          number?: string
-          status?: 'active' | 'inactive' | 'completed'
+          status?: 'ACTIVE' | 'INACTIVE' | 'CANCELLED'
           start_date?: string
-          end_date?: string | null
+          end_date?: string
           value?: number
           created_at?: string
           updated_at?: string
+          sales_rep_id?: string
         }
       }
       audit_logs: {

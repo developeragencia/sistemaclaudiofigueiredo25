@@ -1,54 +1,45 @@
-# Secure Bridge Connect
+# Sistema Cláudio Figueiredo
 
-Sistema de gerenciamento de clientes e contratos com autenticação segura e painel administrativo.
+[![Netlify Status](https://api.netlify.com/api/v1/badges/7b17c521-9563-4293-9dac-e306ba8f4514/deploy-status)](https://app.netlify.com/sites/sistemaclaudiofigueiredo/deploys)
 
-## Tecnologias
+Sistema de gestão empresarial desenvolvido para otimizar processos internos e melhorar a experiência do cliente.
 
-- React
-- TypeScript
-- Tailwind CSS
-- Shadcn/ui
-- React Router DOM
-- Axios
-- React Query
-- Zod
-- Sonner
+## 🚀 Tecnologias
 
-## Funcionalidades
+- [Next.js 14](https://nextjs.org/)
+- [React 18](https://reactjs.org/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [Tailwind CSS](https://tailwindcss.com/)
+- [Supabase](https://supabase.com/)
+- [Shadcn/ui](https://ui.shadcn.com/)
 
-- ✅ Autenticação segura
-- ✅ Painel administrativo
-- ✅ Gerenciamento de clientes
-- ✅ Controle de acesso baseado em funções (RBAC)
-- ✅ Tema claro/escuro
-- ✅ Interface responsiva
-- ✅ Componentes reutilizáveis
-- ✅ Validação de formulários
-- ✅ Feedback visual para o usuário
+## 📋 Funcionalidades
 
-## Pré-requisitos
+- Gestão de Propostas
+- Gestão de Clientes
+- Gestão de Contratos
+- Dashboard Administrativo
+- Relatórios e Análises
+- Sistema de Notificações
+- Controle de Acesso e Permissões
 
-- Node.js 18+
-- npm ou yarn
-
-## Instalação
+## 🛠️ Instalação
 
 1. Clone o repositório:
 ```bash
 git clone https://github.com/seu-usuario/secure-bridge-connect.git
-cd secure-bridge-connect
 ```
 
 2. Instale as dependências:
 ```bash
 npm install
 # ou
-yarn
+yarn install
 ```
 
 3. Configure as variáveis de ambiente:
 ```bash
-cp .env.example .env
+cp .env.example .env.local
 ```
 
 4. Inicie o servidor de desenvolvimento:
@@ -58,35 +49,77 @@ npm run dev
 yarn dev
 ```
 
-## Estrutura do Projeto
+## 🌐 Ambiente de Produção
+
+O sistema está hospedado na Netlify e pode ser acessado em:
+[https://sistemaclaudiofigueiredo.netlify.app](https://sistemaclaudiofigueiredo.netlify.app)
+
+## 📦 Estrutura do Projeto
 
 ```
 src/
-  ├── components/     # Componentes reutilizáveis
-  ├── contexts/       # Contextos React
-  ├── hooks/         # Hooks personalizados
-  ├── lib/           # Utilitários e configurações
-  ├── pages/         # Páginas da aplicação
-  ├── styles/        # Estilos globais
-  └── types/         # Definições de tipos TypeScript
+  ├── app/           # Rotas e páginas
+  ├── components/    # Componentes React
+  ├── lib/          # Bibliotecas e configurações
+  ├── types/        # Definições de tipos TypeScript
+  ├── utils/        # Funções utilitárias
+  └── styles/       # Estilos globais
 ```
 
-## Scripts Disponíveis
+## 🔒 Segurança
 
-- `npm run dev` - Inicia o servidor de desenvolvimento
-- `npm run build` - Cria a build de produção
-- `npm run preview` - Visualiza a build de produção localmente
-- `npm run lint` - Executa o linter
-- `npm run test` - Executa os testes
+- Autenticação via Supabase
+- Proteção contra CSRF
+- Sanitização de dados
+- Validação de entrada
+- Políticas de CORS
+- Rate Limiting
 
-## Contribuindo
+## 📈 Performance
 
-1. Faça o fork do projeto
+- Server-Side Rendering (SSR)
+- Static Site Generation (SSG)
+- Otimização de imagens
+- Code splitting
+- Lazy loading
+- Caching estratégico
+
+## 🧪 Testes
+
+```bash
+# Executar testes unitários
+npm run test
+
+# Executar testes e2e
+npm run test:e2e
+
+# Verificar cobertura de testes
+npm run test:coverage
+```
+
+## 📱 Responsividade
+
+O sistema é totalmente responsivo e otimizado para:
+- Desktop
+- Tablet
+- Mobile
+
+## 🤝 Contribuição
+
+1. Faça um Fork do projeto
 2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
 3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
 4. Push para a branch (`git push origin feature/AmazingFeature`)
 5. Abra um Pull Request
 
-## Licença
+## 📄 Licença
 
 Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+
+## 📞 Suporte
+
+Para suporte, envie um email para suporte@claudiofigueiredo.com.br ou abra uma issue no GitHub.
+
+---
+
+Desenvolvido com ❤️ por [Sua Empresa]

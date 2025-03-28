@@ -1,12 +1,12 @@
 # Configuração para deploy na Netlify (compatível com muitos provedores como Hosting)
 [build]
   command = "npm run build"
-  publish = "dist"
+  publish = ".next"
 
 [build.environment]
-  NODE_VERSION = "18.17.0"
-  NPM_VERSION = "9.6.7"
-  CI = "false"
+  NEXT_PUBLIC_SUPABASE_URL = "your-supabase-url"
+  NEXT_PUBLIC_SUPABASE_ANON_KEY = "your-supabase-anon-key"
+  NODE_VERSION = "18"
 
 # Configuração para SPA (Single Page Application)
 [[redirects]]
@@ -15,8 +15,7 @@
   status = 200
 
 [functions]
-  directory = "netlify/functions"
-  node_bundler = "esbuild"
+  external_node_modules = ["@supabase/supabase-js"]
 
 [build.processing]
   skip_processing = false
