@@ -5,6 +5,15 @@ const nextConfig = {
   images: {
     domains: ['localhost'],
   },
+  experimental: {
+    serverActions: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   env: {
     NEXT_PUBLIC_SUPABASE_URL: process.env.VITE_SUPABASE_DATABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY,

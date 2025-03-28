@@ -1,24 +1,18 @@
 'use client';
 
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import { Toaster } from 'sonner'
-import { NavBar } from '@/components/NavBar'
-import { ThemeProvider } from '@/components/ThemeProvider'
-import { QueryProvider } from '@/components/QueryProvider'
-import './globals.css'
+import { Inter } from 'next/font/google';
+import { Toaster } from 'sonner';
+import { NavBar } from '@/components/NavBar';
+import { ThemeProvider } from '@/components/ThemeProvider';
+import { QueryProvider } from '@/components/QueryProvider';
+import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] })
-
-export const metadata: Metadata = {
-  title: 'Sistema Cláudio Figueiredo',
-  description: 'Sistema de gestão empresarial',
-}
+const inter = Inter({ subsets: ['latin'] });
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
@@ -43,5 +37,5 @@ export default function RootLayout({
         </ThemeProvider>
       </body>
     </html>
-  )
+  );
 } 
