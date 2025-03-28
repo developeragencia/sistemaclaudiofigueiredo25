@@ -1,14 +1,12 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import { Toaster } from 'sonner'
-import { Providers } from '@/providers'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Secure Bridge Connect',
-  description: 'Sistema de gestão financeira',
+  title: 'Sistema Cláudio Figueiredo',
+  description: 'Sistema de gestão empresarial',
 }
 
 export default function RootLayout({
@@ -18,12 +16,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body className={inter.className}>
-        <Providers>
-          {children}
-          <Toaster richColors position="top-right" />
-        </Providers>
-      </body>
+      <body className={inter.className}>{children}</body>
     </html>
   )
 } 

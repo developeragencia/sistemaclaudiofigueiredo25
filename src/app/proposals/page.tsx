@@ -1,66 +1,24 @@
-'use client';
+import { Metadata } from 'next'
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
+import { ProposalList } from '@/components/proposals/ProposalList'
 
-import React from 'react';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { Plus } from 'lucide-react';
-import ProposalList from '@/components/proposals/ProposalList';
-import ProposalFilters from '@/components/proposals/ProposalFilters';
-import ProposalForm from '@/components/proposals/ProposalForm';
-import { useAuth } from '@/hooks/useAuth';
-import { ProposalStatus } from '@/types/proposal';
+export const metadata: Metadata = {
+  title: 'Propostas | Sistema Cláudio Figueiredo',
+  description: 'Gerenciamento de propostas',
+}
 
-export default function ProposalsPage() {
-  const { user } = useAuth();
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
-  const [filters, setFilters] = React.useState<{
-    status?: ProposalStatus[];
-    clientId?: string;
-    salesRepId?: string;
-    startDate?: string;
-    endDate?: string;
-    search?: string;
-  }>({});
-
-  const canCreateProposal = ['MASTER_ADMIN', 'OFFICE_TEAM', 'SALES_REP'].includes(user?.role || '');
+export default async function ProposalsPage() {
+  const supabase = createServerComponentClient({ cookies })
+  const { data: proposals } = await supabase
+    .from('proposals')
+    .select('*')
+    .order('created_at', { ascending: false })
 
   return (
-    <div className="container py-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Propostas Comerciais</h1>
-        {canCreateProposal && (
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Proposta
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Nova Proposta</DialogTitle>
-              </DialogHeader>
-              <ProposalForm
-                onSuccess={() => setIsCreateDialogOpen(false)}
-              />
-            </DialogContent>
-          </Dialog>
-        )}
-      </div>
-
-      <ProposalFilters
-        onFilterChange={setFilters}
-      />
-
-      <ProposalList
-        filters={filters}
-      />
+    <div className="container mx-auto py-8">
+      <h1 className="text-3xl font-bold mb-8">Propostas</h1>
+      <ProposalList proposals={proposals || []} />
     </div>
   )
 } 
